@@ -13,6 +13,14 @@ PILLARS = ["Purpose", "Alliance", "Collaboration", "Excellence"]
 BRAND = "High Performance Diagnostic Tool - Powered by Cathay Academy"
 
 
+def _dept_name_col(df: pd.DataFrame) -> str:
+    """Tolerate either 'Department Name' or 'Department Names'."""
+    for c in ["Department Name", "Department Names", "Department"]:
+        if c in df.columns:
+            return c
+    raise ValueError("Departments sheet needs a 'Department Name' column.")
+
+
 @dataclass
 class HPCConfig:
     questions: pd.DataFrame
@@ -77,10 +85,17 @@ def load_config(path: str | Path) -> HPCConfig:
     questions["Display Order"] = pd.to_numeric(questions["Display Order"], errors="coerce").fillna(9999)
 
     departments = pd.read_excel(path, sheet_name="Departments")
+    name_col = _dept_name_col(departments)
+    departments = departments.rename(columns={name_col: "Department Name"})
     departments = departments.dropna(subset=["Dept ID", "Department Name"]).copy()
     departments["Dept ID"] = departments["Dept ID"].astype(str).str.strip()
     departments["Department Name"] = departments["Department Name"].astype(str).str.strip()
+    departments = departments[departments["Department Name"] != ""]
+    if "Active / Inactive" not in departments.columns:
+        departments["Active / Inactive"] = "Active"
     departments["Active / Inactive"] = departments["Active / Inactive"].fillna("Active").astype(str).str.strip()
+    if "Display Order" not in departments.columns:
+        departments["Display Order"] = range(1, len(departments) + 1)
     departments["Display Order"] = pd.to_numeric(departments["Display Order"], errors="coerce").fillna(9999)
 
     settings_df = pd.read_excel(path, sheet_name="Config")

@@ -96,9 +96,6 @@ def _interp(p: str, s: float) -> str:
     return PILLAR_INTERPRETATIONS[p][key]
 
 
-# ---------------------------------------------------------------------------
-# Pillar-specific closing lines so no two statements share the same ending
-# ---------------------------------------------------------------------------
 _CLOSING = {
     "strength": {
         "Purpose":       "Keep reinforcing the vision at every all-hands so it stays a strength.",
@@ -136,35 +133,35 @@ _CLOSING = {
 def _polarisation_for_pillar(pillar: str, scores: np.ndarray) -> PolarisationStat:
     scores = scores[~np.isnan(scores)]
     if len(scores) == 0:
-        return PolarisationStat(pillar, 0, 0, 0, 0, 0, 0, False, "No data", "No data available.")
+        return PolarisationStat(pillar, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False, "No data", "No data available.")
     mean = float(np.mean(scores)); std = float(np.std(scores, ddof=1) if len(scores) > 1 else 0.0)
     var = float(std ** 2); n = len(scores)
-    pct_low = 100.0 * np.sum(scores <= 4) / n
-    pct_mid = 100.0 * np.sum((scores >= 5) & (scores <= 6)) / n
-    pct_high = 100.0 * np.sum(scores >= 7) / n
+    pct_low = float(100.0 * np.sum(scores <= 4) / n)
+    pct_mid = float(100.0 * np.sum((scores >= 5) & (scores <= 6)) / n)
+    pct_high = float(100.0 * np.sum(scores >= 7) / n)
 
     if std >= 2.0: vlabel = "High variance"
     elif std >= 1.3: vlabel = "Moderate variance"
     else: vlabel = "Low variance"
 
-    polarised = (pct_low >= 25 and pct_high >= 25)
-
+    polarised = bool(pct_low >= 25 and pct_high >= 25)
+    c = _CLOSING
     if polarised:
-        stmt = (f"{pillar} is <b>polarised</b> — {pct_low:.0f}% rate it low (&le;4) while {pct_high:.0f}% "
-                f"rate it high (&ge;7). {vlabel} (SD={std:.2f}) shows a single average hides real disagreement. "
-                f"{_CLOSING['polarised'][pillar]}")
+        stmt = (f"{pillar} is <b>polarised</b> — {pct_low:.0f}% rate it low (1–4) while {pct_high:.0f}% "
+                f"rate it high (7–10). {vlabel} (SD={std:.2f}) shows a single average hides real disagreement. "
+                f"{c['polarised'][pillar]}")
     elif pct_high >= 60:
-        stmt = (f"{pillar} is a <b>broad, agreed strength</b> — {pct_high:.0f}% rate it high (&ge;7) with "
-                f"{vlabel.lower()} (SD={std:.2f}). {_CLOSING['strength'][pillar]}")
+        stmt = (f"{pillar} is a <b>broad, agreed strength</b> — {pct_high:.0f}% rate it high (7–10) with "
+                f"{vlabel.lower()} (SD={std:.2f}). {c['strength'][pillar]}")
     elif pct_low >= 45:
-        stmt = (f"{pillar} is a <b>shared concern</b> — {pct_low:.0f}% rate it low (&le;4), {vlabel.lower()} "
-                f"(SD={std:.2f}); this is consistent, not an outlier. {_CLOSING['concern'][pillar]}")
+        stmt = (f"{pillar} is a <b>shared concern</b> — {pct_low:.0f}% rate it low (1–4), {vlabel.lower()} "
+                f"(SD={std:.2f}); this is consistent, not an outlier. {c['concern'][pillar]}")
     elif std >= 2.0:
         stmt = (f"{pillar} shows <b>scattered views</b> (SD={std:.2f}) with no clear majority "
-                f"({pct_low:.0f}% low, {pct_mid:.0f}% mid, {pct_high:.0f}% high). {_CLOSING['scattered'][pillar]}")
+                f"({pct_low:.0f}% low, {pct_mid:.0f}% mid, {pct_high:.0f}% high). {c['scattered'][pillar]}")
     else:
         stmt = (f"{pillar} shows a <b>settled, consensual view</b> (SD={std:.2f}); {pct_high:.0f}% high, "
-                f"{pct_low:.0f}% low. {_CLOSING['settled'][pillar]}")
+                f"{pct_low:.0f}% low. {c['settled'][pillar]}")
 
     return PolarisationStat(pillar, round(mean, 2), round(std, 2), round(var, 2),
                             round(pct_low, 1), round(pct_mid, 1), round(pct_high, 1),
@@ -194,26 +191,18 @@ def analyze(responses: pd.DataFrame, focus_dept: str, cfg: HPCConfig) -> Analysi
     sub_pillar = df.groupby(["Submission ID", "Pillar"])["Score"].mean().unstack().reindex(columns=PILLARS)
     correlation = sub_pillar.corr()
 
-    if focus_dept == "__ALL__":
+    if focus_dept == "__ALL__" or focus_dept not in dept_pillar.index:
         fps = company_pillar.copy(); focus_overall = company_overall
         n_focus = company_n; focus_name = "Company-wide"
         focus_std = df.groupby("Pillar")["Score"].std().reindex(PILLARS)
         pol_df = df
     else:
-        # ROBUST: if the focus dept isn't present in the filtered data, fall back
-        # gracefully to company-wide instead of crashing.
-        if focus_dept not in dept_pillar.index:
-            fps = company_pillar.copy(); focus_overall = company_overall
-            n_focus = company_n; focus_name = "Company-wide"
-            focus_std = df.groupby("Pillar")["Score"].std().reindex(PILLARS)
-            pol_df = df
-        else:
-            fps = dept_pillar.loc[focus_dept]
-            focus_overall = float(dept_overall.loc[focus_dept])
-            n_focus = int(df[df.Department == focus_dept]["Submission ID"].nunique())
-            focus_name = focus_dept
-            focus_std = df[df.Department == focus_dept].groupby("Pillar")["Score"].std().reindex(PILLARS)
-            pol_df = df[df.Department == focus_dept]
+        fps = dept_pillar.loc[focus_dept]
+        focus_overall = float(dept_overall.loc[focus_dept])
+        n_focus = int(df[df.Department == focus_dept]["Submission ID"].nunique())
+        focus_name = focus_dept
+        focus_std = df[df.Department == focus_dept].groupby("Pillar")["Score"].std().reindex(PILLARS)
+        pol_df = df[df.Department == focus_dept]
 
     focus_means = {p: float(fps[p]) for p in PILLARS}
     focus_imb = float(fps.max() - fps.min())

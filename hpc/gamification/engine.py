@@ -11,52 +11,28 @@ from openpyxl import load_workbook
 ACTIVATION_THRESHOLD = 0.70
 
 PACE_STAGES = [
-    "Not Started",
-    "Warm-up Exercise",
-    "Training",
-    "Reflect",
-    "Implement Change",
-    "Reflect Again",
-    "Training - Tempo",
-    "Race up your PACE",
-    "Finish Line",
+    "Not Started", "Warm-up Exercise", "Training", "Reflect", "Implement Change",
+    "Reflect Again", "Training - Tempo", "Race up your PACE", "Finish Line",
 ]
 STAGE_TO_INDEX = {s: i for i, s in enumerate(PACE_STAGES)}
 
 STAGE_DISPLAY = {
-    "Not Started": "Not Started",
-    "Warm-up Exercise": "Warm-up Exercise",
-    "Training": "Training",
-    "Reflect": "Reflect",
-    "Implement Change": "Implement Change",
-    "Reflect Again": "Reflect",
-    "Training - Tempo": "Training - Tempo",
-    "Race up your PACE": "Race 'up your PACE'",
-    "Finish Line": "Finish Line",
+    "Not Started": "Not Started", "Warm-up Exercise": "Warm-up Exercise", "Training": "Training",
+    "Reflect": "Reflect", "Implement Change": "Implement Change", "Reflect Again": "Reflect",
+    "Training - Tempo": "Training - Tempo", "Race up your PACE": "Race 'up your PACE'", "Finish Line": "Finish Line",
 }
 
 BADGES = [
-    ("Warmed Up", "Survey launched — warm-up complete"),
-    ("In Training", "Reached 70% participation"),
-    ("First Reflection", "Diagnostic report reviewed"),
-    ("Change in Motion", "Action plan approved"),
-    ("Second Reflection", "Checkpoint 1 completed"),
-    ("Tempo Runner", "Checkpoint 2 completed"),
-    ("Race Ready", "Checkpoint 3 completed"),
-    ("Finisher", "Reached the finish line"),
-    ("PACE Setter", "Full PACE journey completed"),
+    ("Warmed Up", "Survey launched"), ("In Training", "70% participation"),
+    ("First Reflection", "Report reviewed"), ("Change in Motion", "Action plan approved"),
+    ("Second Reflection", "Checkpoint 1"), ("Tempo Runner", "Checkpoint 2"),
+    ("Race Ready", "Checkpoint 3"), ("Finisher", "Finish line"), ("PACE Setter", "Full journey"),
 ]
-
-DESTINATIONS = [
-    "Gold Medal", "Silver Medal", "Bronze Medal", "Personal Best",
-    "Course Record", "Team Trophy", "Season Champion", "Marathon Finisher",
-]
-
-COLOUR_HEX = {
-    "Navy": "#1F3864", "Sky Blue": "#4472C4", "Emerald": "#548235",
-    "Coral": "#ED7D31", "Charcoal": "#404040", "Silver": "#A6A6A6",
-    "Gold": "#BF9000", "Teal": "#2E75B6", "Crimson": "#C00000", "Amber": "#FFB300",
-}
+DESTINATIONS = ["Gold Medal", "Silver Medal", "Bronze Medal", "Personal Best",
+                "Course Record", "Team Trophy", "Season Champion", "Marathon Finisher"]
+COLOUR_HEX = {"Navy": "#1F3864", "Sky Blue": "#4472C4", "Emerald": "#548235", "Coral": "#ED7D31",
+              "Charcoal": "#404040", "Silver": "#A6A6A6", "Gold": "#BF9000", "Teal": "#2E75B6",
+              "Crimson": "#C00000", "Amber": "#FFB300"}
 
 
 @dataclass
@@ -72,16 +48,11 @@ class DepartmentJourney:
     destination: str = ""
 
     @property
-    def stage_index(self) -> int:
-        return STAGE_TO_INDEX.get(self.stage, 0)
-
+    def stage_index(self) -> int: return STAGE_TO_INDEX.get(self.stage, 0)
     @property
-    def is_activated(self) -> bool:
-        return self.completion_pct >= ACTIVATION_THRESHOLD
-
+    def is_activated(self) -> bool: return self.completion_pct >= ACTIVATION_THRESHOLD
     @property
-    def stage_display(self) -> str:
-        return STAGE_DISPLAY.get(self.stage, self.stage)
+    def stage_display(self) -> str: return STAGE_DISPLAY.get(self.stage, self.stage)
 
 
 def _parse_bool(v):
@@ -130,22 +101,15 @@ def save_lookup(path, depts):
         if did: existing[str(did).strip()] = r
     for d in depts:
         r = existing.get(d.dept_id, ws.max_row + 1)
-        ws.cell(row=r, column=1, value=d.dept_id)
-        ws.cell(row=r, column=2, value=d.dept_name)
-        ws.cell(row=r, column=3, value=d.dept_code)
-        ws.cell(row=r, column=4, value=d.expected)
+        ws.cell(row=r, column=1, value=d.dept_id); ws.cell(row=r, column=2, value=d.dept_name)
+        ws.cell(row=r, column=3, value=d.dept_code); ws.cell(row=r, column=4, value=d.expected)
         ws.cell(row=r, column=5, value=d.actual)
-        ws.cell(row=r, column=7, value=d.runner_type)
-        ws.cell(row=r, column=8, value=d.runner_colour)
+        ws.cell(row=r, column=7, value=d.runner_type); ws.cell(row=r, column=8, value=d.runner_colour)
         ws.cell(row=r, column=10, value=d.stage)
-        ws.cell(row=r, column=11, value=_yn(d.report_reviewed))
-        ws.cell(row=r, column=12, value=_yn(d.action_plan_submitted))
-        ws.cell(row=r, column=13, value=_yn(d.checkpoint_1))
-        ws.cell(row=r, column=14, value=_yn(d.checkpoint_2))
-        ws.cell(row=r, column=15, value=_yn(d.checkpoint_3))
-        ws.cell(row=r, column=16, value=_yn(d.destination_assigned))
-        ws.cell(row=r, column=17, value=datetime.now().strftime("%Y-%m-%d"))
-        ws.cell(row=r, column=18, value=d.admin_notes)
+        ws.cell(row=r, column=11, value=_yn(d.report_reviewed)); ws.cell(row=r, column=12, value=_yn(d.action_plan_submitted))
+        ws.cell(row=r, column=13, value=_yn(d.checkpoint_1)); ws.cell(row=r, column=14, value=_yn(d.checkpoint_2))
+        ws.cell(row=r, column=15, value=_yn(d.checkpoint_3)); ws.cell(row=r, column=16, value=_yn(d.destination_assigned))
+        ws.cell(row=r, column=17, value=datetime.now().strftime("%Y-%m-%d")); ws.cell(row=r, column=18, value=d.admin_notes)
     wb.save(str(path))
 
 
@@ -163,14 +127,9 @@ def compute_stage(d):
 
 
 def advance_stage(d, action):
-    flags = {
-        "mark_report_reviewed": ("report_reviewed", True),
-        "approve_action_plan": ("action_plan_submitted", True),
-        "mark_checkpoint_1": ("checkpoint_1", True),
-        "mark_checkpoint_2": ("checkpoint_2", True),
-        "mark_checkpoint_3": ("checkpoint_3", True),
-        "assign_destination": ("destination_assigned", True),
-    }
+    flags = {"mark_report_reviewed": ("report_reviewed", True), "approve_action_plan": ("action_plan_submitted", True),
+             "mark_checkpoint_1": ("checkpoint_1", True), "mark_checkpoint_2": ("checkpoint_2", True),
+             "mark_checkpoint_3": ("checkpoint_3", True), "assign_destination": ("destination_assigned", True)}
     if action in flags:
         setattr(d, flags[action][0], flags[action][1])
     d.stage = compute_stage(d)
@@ -178,46 +137,40 @@ def advance_stage(d, action):
 
 
 def badges_earned(d):
-    earned = []
-    if d.expected > 0 or d.actual > 0: earned.append("Warmed Up")
-    if d.is_activated: earned.append("In Training")
-    if d.report_reviewed: earned.append("First Reflection")
-    if d.action_plan_submitted: earned.append("Change in Motion")
-    if d.checkpoint_1: earned.append("Second Reflection")
-    if d.checkpoint_2: earned.append("Tempo Runner")
-    if d.checkpoint_3: earned.append("Race Ready")
-    if d.destination_assigned: earned.append("Finisher")
-    if d.checkpoint_1 and d.checkpoint_2 and d.checkpoint_3 and d.destination_assigned:
-        earned.append("PACE Setter")
-    return earned
+    e = []
+    if d.expected > 0 or d.actual > 0: e.append("Warmed Up")
+    if d.is_activated: e.append("In Training")
+    if d.report_reviewed: e.append("First Reflection")
+    if d.action_plan_submitted: e.append("Change in Motion")
+    if d.checkpoint_1: e.append("Second Reflection")
+    if d.checkpoint_2: e.append("Tempo Runner")
+    if d.checkpoint_3: e.append("Race Ready")
+    if d.destination_assigned: e.append("Finisher")
+    if d.checkpoint_1 and d.checkpoint_2 and d.checkpoint_3 and d.destination_assigned: e.append("PACE Setter")
+    return e
 
 
 def checkpoint_challenges(weakest_pillar=None):
-    hint = {
-        "Purpose":       "This is your priority element — anchor your update here.",
-        "Alliance":      "Stakeholder trust and leadership visibility may be your biggest headwind.",
-        "Collaboration": "Ways of working and decision-making are your primary drag.",
-        "Excellence":    "Learning and continuous improvement need to be more systematic.",
-    }.get(weakest_pillar, "")
+    hint = {"Purpose": "This is your priority element — anchor your update here.",
+            "Alliance": "Stakeholder trust and leadership visibility may be your biggest headwind.",
+            "Collaboration": "Ways of working and decision-making are your primary drag.",
+            "Excellence": "Learning and continuous improvement need to be more systematic."}.get(weakest_pillar, "")
     return {
         "Reflect — Purpose Alignment": {
             "focus": "Clarity, direction, and alignment.",
             "challenge": "Pacing check: some runners may not see how their leg connects to the race strategy.",
             "priority_hint": hint if weakest_pillar == "Purpose" else "",
-            "prompt": "Update on how you've strengthened purpose/direction. Examples: reconfirmed priorities, shared customer stories.",
-        },
+            "prompt": "Update on how you've strengthened purpose/direction."},
         "Training Tempo — Alliance & Collaboration": {
             "focus": "Leadership, relationships, ways of working.",
             "challenge": "Tempo check: hand-offs between team-mates need cleaner exchanges to hold the pace.",
             "priority_hint": hint if weakest_pillar in ("Alliance", "Collaboration") else "",
-            "prompt": "Update on alliance/collaboration. Examples: better cadence, clarified decision rights, smoother hand-offs.",
-        },
+            "prompt": "Update on alliance/collaboration."},
         "Race up your PACE — Excellence Momentum": {
             "focus": "Learning, feedback, continuous improvement.",
             "challenge": "Final surge: sustained learning and feedback are needed to hold your PACE to the line.",
             "priority_hint": hint if weakest_pillar == "Excellence" else "",
-            "prompt": "Update on improvements. Examples: process improvement, new tool, learning session, feedback loop.",
-        },
+            "prompt": "Update on improvements."},
     }
 
 
@@ -229,13 +182,10 @@ def assign_random_destination(seed=None):
 def log_admin_action(path, admin_user, action, dept, details):
     wb = load_workbook(str(path))
     if "Audit Log" not in wb.sheetnames: return
-    ws = wb["Audit Log"]
-    r = ws.max_row + 1
+    ws = wb["Audit Log"]; r = ws.max_row + 1
     ws.cell(row=r, column=1, value=datetime.now().strftime("%Y-%m-%d %H:%M"))
-    ws.cell(row=r, column=2, value=admin_user)
-    ws.cell(row=r, column=3, value=action)
-    ws.cell(row=r, column=4, value=dept)
-    ws.cell(row=r, column=5, value=details)
+    ws.cell(row=r, column=2, value=admin_user); ws.cell(row=r, column=3, value=action)
+    ws.cell(row=r, column=4, value=dept); ws.cell(row=r, column=5, value=details)
     wb.save(str(path))
 
 
@@ -256,8 +206,7 @@ def save_checkpoint_update(base_dir, dept_id, checkpoint, text):
     d = Path(base_dir); d.mkdir(parents=True, exist_ok=True)
     out = d / f"checkpoints_{dept_id}.json"
     data = json.loads(out.read_text()) if out.exists() else {}
-    data[f"checkpoint_{checkpoint}"] = {"updated_at": datetime.now().isoformat(timespec="seconds"),
-                                        "update_text": text}
+    data[f"checkpoint_{checkpoint}"] = {"updated_at": datetime.now().isoformat(timespec="seconds"), "update_text": text}
     out.write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
 

@@ -15,9 +15,9 @@ NAVY = colors.HexColor("#1F3864")
 GOLD = colors.HexColor("#BF9000")
 GREY = colors.HexColor("#BFBFBF")
 GREY_LIGHT = colors.HexColor("#F2F2F2")
-RED = colors.HexColor("#C00000")
+RED = colors.HexColor("#C0392B")
 AMBER = colors.HexColor("#ED7D31")
-GREEN = colors.HexColor("#548235")
+GREEN = colors.HexColor("#3F7D3A")
 
 
 def _styles():
@@ -67,20 +67,18 @@ def build_pdf(analysis, cfg, output_path, prepared_by="OD — Cathay Academy", a
                             f"{analysis_date} · Prepared by {prepared_by}", styles["small"]))
     story.append(Spacer(1, 3))
 
-    # Row of 3 charts: radar | polarisation | ranking
+    # Three compact charts: radar | pillar means | polarisation (avoids 34-dept clutter)
     radar = Image(charts.radar_png(focus.pillar_means, analysis.company_pillar_means, focus.department),
                   width=6.4 * cm, height=5.6 * cm)
-    polar = Image(charts.polar_png(analysis.polarisation), width=6.6 * cm, height=5.0 * cm)
-    rank = Image(charts.ranking_png(analysis.all_departments, analysis.company_overall,
-                                    focus=focus.department if focus.department != "Company-wide" else None),
-                 width=7.4 * cm, height=5.0 * cm)
-    charts_row = Table([[radar, polar, rank]], colWidths=[6.6 * cm, 6.7 * cm, 7.5 * cm])
+    pillar = Image(charts.pillar_png(focus.pillar_means, analysis.company_pillar_means),
+                   width=6.6 * cm, height=5.0 * cm)
+    polar = Image(charts.polar_png(analysis.polarisation), width=6.8 * cm, height=5.0 * cm)
+    charts_row = Table([[radar, pillar, polar]], colWidths=[6.6 * cm, 6.8 * cm, 7.0 * cm])
     charts_row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                                     ("ALIGN", (0, 0), (-1, -1), "CENTER")]))
     story.append(charts_row)
     story.append(Spacer(1, 4))
 
-    # Two columns: Polarisation & Variance | Tailored recs
     left = [Paragraph("Polarisation &amp; Variance Analysis", styles["h2"])]
     for pol in analysis.polarisation:
         left.append(Paragraph(f"• {pol.statement}", styles["body"]))

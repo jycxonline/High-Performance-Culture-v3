@@ -1,29 +1,24 @@
-# High Performance Diagnostic Tool — v3 (PACE)
+# High Performance Diagnostic Tool — v3.1 (PACE)
 
 **Powered by Cathay Academy.** Framework = **PACE**: Purpose · Alliance · Collaboration · Excellence.
 
-## What was fixed in v3 (from your feedback)
+## What changed in v3.1 (from your feedback)
 
-1. **Admin Dashboard crash (`Department not in data`)** — fixed. The dashboard now
-   analyses against the full dataset, and `analyze()` falls back to company-wide instead
-   of raising if a focus department is ever missing.
-2. **Report not clear / focus name too big** — the giant title is gone; the focus is a
-   compact one-line header. No cramped combined image.
-3. **One-page combined report removed on screen** — replaced with clear, individual
-   charts at readable sizes.
-4. **Radar was a solid block** — now an outline style: navy solid line + gold dashed
-   company line, with value labels, so both series are clearly comparable.
-5. **Company-wide chart too small** — all charts enlarged and laid out 2-per-row.
-6. **Polarisation analysis repeated the same closing sentence** — each element now has a
-   distinct, element-specific closing recommendation.
-7. **Tables scrolled sideways** — Tailored Recommendations and Polarisation are now
-   cards (2-column, wrap, no horizontal scroll); rule-based insights are bullets.
-8. **PACE runner label** — now shows the **department** (name in header + on the runner).
+1. **Dashboard `AttributeError` at `polarisation_bar` fixed** — the chart is rebuilt with plain
+   floats, ASCII legend labels and `getattr` guards, and **every chart on the dashboard is now
+   wrapped** so a single chart can never crash the page.
+2. **Department list updated to the 34 departments** from your Excel (APD → EXO). They flow through
+   the config, the sample response data (so every department has data), and the PACE lookup.
+3. **More professional visuals** — cleaner palette, consistent titles/gridlines, a tidy focus strip
+   instead of oversized metric text, recommendation & polarisation **cards** (no sideways scrolling),
+   and the full 34-department ranking moved into an expander so the main view stays clean.
+4. The config loader now tolerates either **"Department Name"** or **"Department Names"** headers, so
+   your exact Excel uploads cleanly.
 
 ## Quick start
 
 ```bash
-unzip HPC_Diagnostic_Tool_v3.zip
+unzip HPC_Diagnostic_Tool_v3.1.zip
 cd hpc_tool
 ./run.sh              # macOS / Linux  (or run.bat on Windows)
 ```
@@ -33,21 +28,18 @@ Opens at `http://localhost:8501`. First run installs dependencies (~1 min).
 
 | Page | Try | You'll see |
 |---|---|---|
-| 📊 Admin Dashboard | Focus = **Information Technology** | Clear charts + polarised Alliance/Collaboration written analysis (distinct endings) + tailored recommendation cards |
-| 📊 Admin Dashboard | Focus = **Company-wide** | Larger, readable charts (no crash) |
-| 🏃 PACE | **PC — People & Culture** | Runner mid-journey, labelled with the department |
-| 🏃 PACE | **CA — Cathay Academy** | Runner at the Finish Line |
+| 📊 Admin Dashboard | Focus = **IMT - Information Technology** | Clear charts + polarised Alliance/Collaboration analysis + tailored recommendation cards |
+| 📊 Admin Dashboard | Focus = **Company-wide** | Larger readable charts across all 34 departments (no crash) |
+| 🏃 PACE | Any department | Runner on the straight PACE track, labelled with the department |
 
-## Pages
+## Deploying to Streamlit Cloud (`high-performance-culture-v3`)
 
-**Diagnostic** — Home · Take Questionnaire *(no defaults; all 40 required)* ·
-Admin Dashboard *(single combined view)* · Generate Executive Report *(one-page PDF)* ·
-Upload Response Data · Upload Configuration
-
-**PACE** — PACE *(running-track journey)* · Submit Action Plan · Checkpoint Update · PACE Admin
+Replace the repo contents with this package and redeploy. The `polarisation_bar` crash and the
+department-not-found error are both resolved, and the 34 departments are loaded.
 
 ## Version
 
-- Tool: 3.0.0 · Framework: PACE
-- Schema (config): HPC-CONFIG-v2 · Schema (lookup): PACE-DEPTLOOKUP-v1
+- Tool: 3.1.0 · Framework: PACE · 34 departments
+- Schema (config): HPC-CONFIG-v2 (accepts "Department Name" / "Department Names")
+- Schema (lookup): PACE-DEPTLOOKUP-v1
 - Powered by Cathay Academy
