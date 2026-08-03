@@ -1,4 +1,4 @@
-"""Build all Excel data files for v2 (PACE framework): config, responses, lookup."""
+"""Build all Excel data files for v3 (PACE framework): config, responses, lookup."""
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -25,7 +25,6 @@ def _data(cell, wrap=True, bold=False):
     cell.border = border
 
 
-# PACE framework: Purpose · Alliance · Collaboration · Excellence
 QUESTIONS = [
     ("Q01", "Purpose", "Our team has a clear and compelling vision that guides our work.", "Vision"),
     ("Q02", "Purpose", "I understand how my role contributes to the organization's overall mission.", "Mission"),
@@ -81,7 +80,7 @@ DEPARTMENTS = [
 ]
 
 CONFIG_SETTINGS = [
-    ("tool_version", "2.0", "Tool version.", "Read-only"),
+    ("tool_version", "3.0", "Tool version.", "Read-only"),
     ("schema_version", "HPC-CONFIG-v2", "Schema.", "Read-only"),
     ("framework", "PACE", "Purpose · Alliance · Collaboration · Excellence.", "Read-only"),
     ("last_updated_date", date.today().isoformat(), "Auto-stamped.", "Read-only"),
@@ -111,7 +110,6 @@ def build_config():
     ws0["A2"] = "Powered by Cathay Academy. Elements: Purpose · Alliance · Collaboration · Excellence."
     ws0["A2"].font = Font(name="Arial", size=11, italic=True, color="595959")
     ws0.merge_cells("A2:F2")
-
     ws = wb.create_sheet("Question Bank")
     for j, h in enumerate(["Question ID", "Pillar", "Question Text", "Active / Inactive",
                             "Display Order", "Sub-driver", "Optional Notes"], start=1):
@@ -128,7 +126,6 @@ def build_config():
     for col, w in {"A": 14, "B": 16, "C": 66, "D": 18, "E": 14, "F": 24, "G": 30}.items():
         ws.column_dimensions[col].width = w
     ws.freeze_panes = "A2"
-
     wsd = wb.create_sheet("Departments")
     for j, h in enumerate(["Dept ID", "Department Name", "Parent Group", "Active / Inactive",
                             "Display Order", "HR / Business Owner", "Notes"], start=1):
@@ -138,7 +135,6 @@ def build_config():
             wsd.cell(row=i, column=j, value=v); _data(wsd.cell(row=i, column=j))
     for col, w in {"A": 10, "B": 30, "C": 20, "D": 18, "E": 14, "F": 28, "G": 40}.items():
         wsd.column_dimensions[col].width = w
-
     wsc = wb.create_sheet("Config")
     for j, h in enumerate(["Setting Key", "Value", "Description", "Governance"], start=1):
         _header(wsc.cell(row=1, column=j), h)
@@ -151,16 +147,14 @@ def build_config():
                 wsc.cell(row=i, column=j).fill = PatternFill("solid", start_color=GOLD_LIGHT)
     for col, w in {"A": 30, "B": 40, "C": 60, "D": 16}.items():
         wsc.column_dimensions[col].width = w
-
     wscl = wb.create_sheet("Change Log")
     for j, h in enumerate(["Date", "Changed By", "Change Type", "Item Affected",
                             "Summary of Change", "Reason / Approval"], start=1):
         _header(wscl.cell(row=1, column=j), h)
     wscl.cell(row=2, column=1, value=date.today().isoformat())
     wscl.cell(row=2, column=2, value="Cathay Academy"); wscl.cell(row=2, column=3, value="Initial")
-    wscl.cell(row=2, column=4, value="All"); wscl.cell(row=2, column=5, value="Baseline v2.0 (PACE)")
+    wscl.cell(row=2, column=4, value="All"); wscl.cell(row=2, column=5, value="Baseline v3.0 (PACE)")
     for j in range(1, 7): _data(wscl.cell(row=2, column=j))
-
     wss = wb.create_sheet("_SCHEMA")
     wss["A2"] = "schema_name"; wss["B2"] = "HPC-CONFIG-v2"
     wss.sheet_state = "hidden"
@@ -172,7 +166,6 @@ PILLAR_QS = {}
 for qid, pillar, text, _ in QUESTIONS:
     PILLAR_QS.setdefault(pillar, []).append((qid, text))
 
-# Profiles include a deliberately POLARISED element for IT (Collaboration)
 DEPT_PROFILE = {
     "Customer Experience":    {"Purpose": 7.8, "Alliance": 7.4, "Collaboration": 6.9, "Excellence": 7.6},
     "Commercial":             {"Purpose": 7.5, "Alliance": 7.0, "Collaboration": 6.5, "Excellence": 7.1},
@@ -183,9 +176,7 @@ DEPT_PROFILE = {
     "Cargo":                  {"Purpose": 6.9, "Alliance": 6.7, "Collaboration": 6.4, "Excellence": 6.6},
     "Cathay Academy":         {"Purpose": 8.4, "Alliance": 8.1, "Collaboration": 7.6, "Excellence": 8.5},
 }
-# Elements that should look polarised (bimodal) for realism
-POLARISED = {"Information Technology": {"Collaboration", "Alliance"},
-             "Operations": {"Collaboration"}}
+POLARISED = {"Information Technology": {"Collaboration", "Alliance"}, "Operations": {"Collaboration"}}
 
 
 def build_responses():
@@ -207,11 +198,7 @@ def build_responses():
             rid = f"EMP-{random.randint(10000, 99999)}"; po = random.gauss(0, 0.6)
             for pillar, qid, qtext in all_q:
                 if dept in POLARISED and pillar in POLARISED[dept]:
-                    # bimodal: half the respondents low, half high
-                    if r_i % 2 == 0:
-                        s = clamp(random.gauss(prof[pillar] - 2.2, 1.0))
-                    else:
-                        s = clamp(random.gauss(prof[pillar] + 2.2, 1.0))
+                    s = clamp(random.gauss(prof[pillar] - 2.2, 1.0)) if r_i % 2 == 0 else clamp(random.gauss(prof[pillar] + 2.2, 1.0))
                 else:
                     s = clamp(random.gauss(prof[pillar] + po, 1.4))
                 ws.cell(row=row, column=1, value=sid)
@@ -255,18 +242,15 @@ def build_dept_lookup():
     ws0.merge_cells("A1:F1")
     ws0["A2"] = "Drives the PACE journey. Runner activates (In Training) at 70% completion."
     ws0.merge_cells("A2:F2")
-
     ws = wb.create_sheet("Department Lookup")
     headers = ["Department ID", "Department Name", "Department Code",
                "Expected Respondents", "Actual Responses", "Completion %",
-               "Runner Type", "Runner Colour", "Runner Status",
-               "Current Stage",
+               "Runner Type", "Runner Colour", "Runner Status", "Current Stage",
                "Report Reviewed", "Action Plan Submitted",
                "Checkpoint 1 Completed", "Checkpoint 2 Completed", "Checkpoint 3 Completed",
                "Finish Line Reached", "Last Updated Date", "Admin Notes"]
     for j, h in enumerate(headers, start=1):
         _header(ws.cell(row=1, column=j), h)
-
     for i, rw in enumerate(DEPT_LOOKUP_ROWS, start=2):
         (did, name, code, exp, act, runner, colour, stage, rr, ap, c1, c2, c3, da, notes) = rw
         ws.cell(row=i, column=1, value=did); ws.cell(row=i, column=2, value=name)
@@ -286,13 +270,11 @@ def build_dept_lookup():
         ws.cell(row=i, column=17, value=date.today().isoformat())
         ws.cell(row=i, column=18, value=notes)
         for j in range(1, 19): _data(ws.cell(row=i, column=j))
-
     widths = {"A": 12, "B": 26, "C": 8, "D": 14, "E": 12, "F": 12, "G": 16, "H": 14, "I": 16,
               "J": 20, "K": 14, "L": 16, "M": 16, "N": 16, "O": 16, "P": 16, "Q": 14, "R": 42}
     for col, w in widths.items():
         ws.column_dimensions[col].width = w
     ws.freeze_panes = "C2"
-
     stage_list = ("Not Started,Warm-up Exercise,Training,Reflect,Implement Change,"
                   "Reflect Again,Training - Tempo,Race up your PACE,Finish Line")
     dv = DataValidation(type="list", formula1=f'"{stage_list}"', allow_blank=True)
@@ -302,7 +284,6 @@ def build_dept_lookup():
     for col in ["K", "L", "M", "N", "O", "P"]:
         d = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
         d.add(f"{col}2:{col}{len(DEPT_LOOKUP_ROWS)+1}"); ws.add_data_validation(d)
-
     wsl = wb.create_sheet("Audit Log")
     for j, h in enumerate(["Timestamp", "Admin User", "Action", "Department", "Details"], start=1):
         _header(wsl.cell(row=1, column=j), h)
@@ -312,7 +293,6 @@ def build_dept_lookup():
     for j in range(1, 6): _data(wsl.cell(row=2, column=j))
     for col, w in {"A": 22, "B": 24, "C": 26, "D": 24, "E": 60}.items():
         wsl.column_dimensions[col].width = w
-
     wss = wb.create_sheet("_SCHEMA")
     wss["A2"] = "schema_name"; wss["B2"] = "PACE-DEPTLOOKUP-v1"
     wss.sheet_state = "hidden"
@@ -321,6 +301,4 @@ def build_dept_lookup():
 
 
 if __name__ == "__main__":
-    build_config()
-    build_responses()
-    build_dept_lookup()
+    build_config(); build_responses(); build_dept_lookup()

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# High Performance Diagnostic Tool launcher (macOS/Linux)
 set -e
 cd "$(dirname "$0")"
 if [ ! -d ".venv" ]; then

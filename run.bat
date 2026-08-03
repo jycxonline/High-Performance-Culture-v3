@@ -1,5 +1,4 @@
 @echo off
-REM High Performance Diagnostic Tool launcher (Windows)
 cd /d "%~dp0"
 if not exist .venv (
     python -m venv .venv

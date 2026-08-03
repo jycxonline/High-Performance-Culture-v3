@@ -1,4 +1,4 @@
-"""High Performance Diagnostic Tool v2 — PACE framework. Powered by Cathay Academy."""
+"""High Performance Diagnostic Tool v3 — PACE framework. Powered by Cathay Academy."""
 from __future__ import annotations
 import shutil
 import uuid
@@ -48,7 +48,15 @@ st.markdown(f"""<style>
         font-size: 0.85rem; font-weight: 600; color: white; }}
     .band-dysf {{ background: #C00000; }} .band-bal {{ background: #ED7D31; }}
     .band-perf {{ background: #4472C4; }} .band-hpc {{ background: #548235; }}
+    .rec-card {{ border:1px solid #E3E8F0; border-left:5px solid var(--pc);
+        border-radius:6px; padding:10px 14px; margin-bottom:10px; background:#FCFDFF; }}
+    .rec-card .el {{ font-weight:700; color:{NAVY}; }}
+    .rec-card .pri {{ float:right; font-weight:700; font-size:0.78rem; }}
+    .pol-card {{ border-left:4px solid {NAVY}; background:#F4F7FC; padding:9px 13px;
+        margin-bottom:9px; border-radius:4px; }}
 </style>""", unsafe_allow_html=True)
+
+_PRI_COLOUR = {"Critical": "#C00000", "High": "#ED7D31", "Medium": "#548235", "Low": "#8C8C8C"}
 
 
 def band_chip(cls):
@@ -118,30 +126,25 @@ def page_home():
     st.markdown(f"""<div class="hpc-hero">
     <h1>High Performance Diagnostic Tool</h1>
     <p>Diagnostic across the <b>PACE</b> framework — <b>P</b>urpose · <b>A</b>lliance ·
-    <b>C</b>ollaboration · <b>E</b>xcellence — with a single-department PACE journey.
-    {BRAND}.</p></div>""", unsafe_allow_html=True)
-
+    <b>C</b>ollaboration · <b>E</b>xcellence. {BRAND}.</p></div>""", unsafe_allow_html=True)
     cfg = get_config(); df = get_responses()
     if len(df) == 0:
         st.info("No response data loaded yet."); return
-    n_subs = df["Submission ID"].nunique()
-    n_depts = df["Department"].nunique()
+    n_subs = df["Submission ID"].nunique(); n_depts = df["Department"].nunique()
     cp = df.groupby("Pillar")["Score"].mean().reindex(PILLARS)
-    co = float(cp.mean()); imb = float(cp.max() - cp.min())
-    cls = classify_score(co, cfg)
+    co = float(cp.mean()); imb = float(cp.max() - cp.min()); cls = classify_score(co, cfg)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Submissions", f"{n_subs:,}")
     c2.metric("Departments", n_depts)
     c3.metric("Company PACE", f"{co:.2f}", f"{imb:.2f} gap")
     c4.markdown(f"**Classification**<br>{band_chip(cls)}", unsafe_allow_html=True)
-    pv = pd.DataFrame({"Element": PILLARS,
-                        "Score": [round(float(cp[p]), 2) for p in PILLARS],
+    pv = pd.DataFrame({"Element": PILLARS, "Score": [round(float(cp[p]), 2) for p in PILLARS],
                         "Status": [classify_score(float(cp[p]), cfg) for p in PILLARS]})
     st.dataframe(pv, use_container_width=True, hide_index=True)
 
 
 # ---------------------------------------------------------------------------
-# QUESTIONNAIRE — no default scores; every question required before submit
+# QUESTIONNAIRE — no default scores; all questions required
 # ---------------------------------------------------------------------------
 def page_questionnaire():
     st.markdown(f"""<div class="hpc-hero"><h1>Take the Questionnaire</h1>
@@ -167,8 +170,7 @@ def page_questionnaire():
 
     if st.session_state.quest_step == "answer":
         st.markdown(f"**Department:** {st.session_state.quest_dept}")
-        total = len(active)
-        opts = list(range(cfg.scale_min, cfg.scale_max + 1))
+        total = len(active); opts = list(range(cfg.scale_min, cfg.scale_max + 1))
         tabs = st.tabs(PILLARS)
         for tab, pillar in zip(tabs, PILLARS):
             with tab:
@@ -177,47 +179,36 @@ def page_questionnaire():
                     qid = row["Question ID"]
                     prev = st.session_state.quest_answers.get(qid)
                     idx = opts.index(prev) if prev in opts else None
-                    # radio with NO default (index=None) -> nothing pre-selected
                     val = st.radio(f"**{qid}.** {row['Question Text']}", opts,
                                    index=idx, horizontal=True, key=f"q_{qid}")
                     if val is not None:
                         st.session_state.quest_answers[qid] = val
                     st.markdown("---")
-
         answered = sum(1 for _, r in active.iterrows()
                        if st.session_state.quest_answers.get(r["Question ID"]) is not None)
         st.progress(answered / total, text=f"{answered} / {total} answered")
-        remaining = total - answered
-        if remaining > 0:
-            st.warning(f"⚠️ {remaining} question(s) still need an answer before you can submit.")
-
+        if total - answered > 0:
+            st.warning(f"⚠️ {total - answered} question(s) still need an answer before you can submit.")
         c1, _, c3 = st.columns([1, 2, 1])
         with c1:
             if st.button("← Back"): st.session_state.quest_step = "start"; st.rerun()
         with c3:
-            can = (answered == total)
-            if st.button("Submit ✓", type="primary", disabled=not can):
+            if st.button("Submit ✓", type="primary", disabled=(answered != total)):
                 sub_id = f"HPC-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
                 answers = {r["Question ID"]: (r["Question Text"], r["Pillar"],
                                                 int(st.session_state.quest_answers[r["Question ID"]]))
                             for _, r in active.iterrows()}
                 _ensure_response_file()
                 append_submission(str(RESPONSE_PATH), sub_id, st.session_state.quest_dept,
-                                    "" if cfg.anonymous_mode else f"USER-{uuid.uuid4().hex[:6].upper()}",
-                                    answers)
+                                    "" if cfg.anonymous_mode else f"USER-{uuid.uuid4().hex[:6].upper()}", answers)
                 clear_caches()
-                st.session_state.quest_step = "done"
-                st.session_state.quest_sub_id = sub_id
-                st.rerun()
+                st.session_state.quest_step = "done"; st.session_state.quest_sub_id = sub_id; st.rerun()
 
     if st.session_state.quest_step == "done":
-        st.balloons()
-        st.success("✅ Thank you — all questions completed and submitted.")
+        st.balloons(); st.success("✅ Thank you — all questions completed and submitted.")
         st.markdown(f"**Submission ID:** {st.session_state.quest_sub_id}")
         if st.button("Take another"):
-            st.session_state.quest_step = "start"
-            st.session_state.quest_answers = {}
-            st.rerun()
+            st.session_state.quest_step = "start"; st.session_state.quest_answers = {}; st.rerun()
 
 
 def _ensure_response_file():
@@ -235,70 +226,93 @@ def _ensure_response_file():
 
 
 # ---------------------------------------------------------------------------
-# ADMIN DASHBOARD — single combined Insights & Recommendations view (one page)
+# ADMIN DASHBOARD — single combined view, robust, clear individual charts
 # ---------------------------------------------------------------------------
 def page_dashboard():
     st.markdown(f"""<div class="hpc-hero"><h1>Admin Dashboard</h1>
-    <p>One-page PACE insights: compact charts, polarisation &amp; variance analysis,
-    and tailored recommendations — all in a single view.</p></div>""", unsafe_allow_html=True)
+    <p>PACE insights in one view — clear charts, polarisation &amp; variance analysis,
+    and tailored recommendations.</p></div>""", unsafe_allow_html=True)
     cfg = get_config(); df = get_responses()
     if len(df) == 0:
         st.warning("No data."); return
 
-    with st.expander("🔍 Filters", expanded=True):
-        c1, c2, c3 = st.columns(3)
-        available = sorted(df["Department"].unique())
-        with c1:
-            focus_opt = st.selectbox("Focus", ["Company-wide (all)"] + available)
-        with c2:
-            selected = st.multiselect("Include departments", available, default=available)
-        with c3:
-            min_r = st.number_input("Min responses", min_value=1, value=cfg.min_responses_dept)
+    depts_avail = sorted(df["Department"].unique())
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        focus_opt = st.selectbox("Focus", ["Company-wide (all)"] + depts_avail)
+    with c2:
+        min_r = st.number_input("Min responses (caution flag)", min_value=1, value=cfg.min_responses_dept)
 
-    filtered = df[df["Department"].isin(selected)].copy()
-    small = filtered.groupby("Department")["Submission ID"].nunique()
-    small = small[small < min_r].index.tolist()
-    if small:
-        st.warning(f"⚠️ Below {min_r} responses: {', '.join(small)}")
-    if len(filtered) == 0:
-        st.error("No data."); return
-
+    # Robust: analyse against the FULL dataset so the focus dept is always present.
     focus_key = "__ALL__" if focus_opt.startswith("Company") else focus_opt
-    analysis = analyze(filtered, focus_key, cfg)
+    try:
+        analysis = analyze(df, focus_key, cfg)
+    except Exception as e:
+        st.error(f"Could not analyse: {e}")
+        return
 
-    # KPI strip
-    k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("Focus", analysis.focus.department)
-    k2.metric("Respondents", f"{analysis.focus.n_respondents:,}")
-    k3.metric("PACE score", f"{analysis.focus.overall:.2f}")
-    k4.metric("vs. company", f"{analysis.focus.overall - analysis.company_overall:+.2f}")
-    k5.markdown(f"**Classification**<br>{band_chip(analysis.focus.classification)}", unsafe_allow_html=True)
+    if analysis.focus.n_respondents < min_r and analysis.focus.department != "Company-wide":
+        st.warning(f"⚠️ {analysis.focus.department} has {analysis.focus.n_respondents} responses "
+                   f"(< {min_r}); interpret with caution.")
 
-    st.markdown("### 📊 One-page report")
-    fig = charts.one_page_dashboard(analysis)
-    st.pyplot(fig, use_container_width=True)
+    # ---- Focus header (small, no giant metric text) ----
+    st.markdown(
+        f"<div style='display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin:6px 0 4px'>"
+        f"<span style='font-size:1.15rem;font-weight:700;color:{NAVY}'>Focus: {analysis.focus.department}</span>"
+        f"<span>Respondents: <b>{analysis.focus.n_respondents:,}</b></span>"
+        f"<span>PACE score: <b>{analysis.focus.overall:.2f}</b></span>"
+        f"<span>vs company: <b>{analysis.focus.overall - analysis.company_overall:+.2f}</b></span>"
+        f"{band_chip(analysis.focus.classification)}</div>", unsafe_allow_html=True)
 
-    colA, colB = st.columns(2)
-    with colA:
-        st.markdown("### 🔬 Polarisation & Variance Analysis")
-        for pol in analysis.polarisation:
-            badge = "🔴 Polarised" if pol.polarised else pol.variance_label
+    # ---- Clear individual charts (no cramped one-page image) ----
+    r1a, r1b = st.columns(2)
+    with r1a:
+        st.pyplot(charts.radar_chart(analysis.focus.pillar_means, analysis.company_pillar_means,
+                                     analysis.focus.department), use_container_width=True)
+    with r1b:
+        st.pyplot(charts.pillar_bar(analysis.focus.pillar_means, analysis.company_pillar_means),
+                  use_container_width=True)
+    r2a, r2b = st.columns(2)
+    with r2a:
+        st.pyplot(charts.polarisation_bar(analysis.polarisation), use_container_width=True)
+    with r2b:
+        st.pyplot(charts.ranking_bar(analysis.all_departments, analysis.company_overall,
+                                     focus=analysis.focus.department if analysis.focus.department != "Company-wide" else None),
+                  use_container_width=True)
+
+    st.markdown("---")
+
+    # ---- Polarisation & Variance (varied statements) ----
+    st.markdown("### 🔬 Polarisation & Variance Analysis")
+    pcols = st.columns(2)
+    for i, pol in enumerate(analysis.polarisation):
+        badge = "🔴 Polarised" if pol.polarised else pol.variance_label
+        with pcols[i % 2]:
             st.markdown(
-                f"<div style='border-left:4px solid {NAVY};background:#F4F7FC;padding:8px 12px;"
-                f"margin-bottom:8px;border-radius:4px'><b>{pol.pillar}</b> "
+                f"<div class='pol-card'><b>{pol.pillar}</b> "
                 f"<span style='color:#8C8C8C'>· mean {pol.mean} · SD {pol.std} · {badge}</span><br>"
-                f"<span style='font-size:0.9rem'>{pol.statement}</span></div>",
-                unsafe_allow_html=True)
-    with colB:
-        st.markdown("### 🎯 Tailored Actionable Recommendations")
-        tr = pd.DataFrame(analysis.tailored_recommendations)
-        st.dataframe(tr, use_container_width=True, hide_index=True)
+                f"<span style='font-size:0.92rem'>{pol.statement}</span></div>", unsafe_allow_html=True)
 
-    with st.expander("📋 Rule-based insights (supporting detail)"):
+    # ---- Tailored recommendations as cards (no horizontal scroll) ----
+    st.markdown("### 🎯 Tailored Actionable Recommendations")
+    tcols = st.columns(2)
+    for i, t in enumerate(analysis.tailored_recommendations):
+        col = _PRI_COLOUR.get(t["Priority"], "#8C8C8C")
+        with tcols[i % 2]:
+            st.markdown(
+                f"<div class='rec-card' style='--pc:{col}'>"
+                f"<span class='el'>{t['Element']}</span>"
+                f"<span class='pri' style='color:{col}'>{t['Priority']}</span><br>"
+                f"<span style='font-size:0.92rem'>{t['Recommendation']}</span><br>"
+                f"<span style='font-size:0.8rem;color:#667'>Mean {t['Mean']} · Gap {t['Gap']} · {t['Why']}</span>"
+                f"</div>", unsafe_allow_html=True)
+
+    # ---- Supporting detail (bullets, no wide tables) ----
+    with st.expander("📋 Rule-based insights & department table"):
         for ins in analysis.insights:
-            st.markdown(f"- **{ins['label']}.** {ins['text']}")
-        st.markdown("**Department table**")
-        tbl = analysis.all_departments.round(2)
+            st.markdown(f"- **{ins['label']}:** {ins['text']}")
+        st.markdown("**Department overview** (Overall + imbalance)")
+        tbl = analysis.all_departments[PILLARS + ["Overall", "Imbalance", "N respondents"]].round(2).copy()
         cls = []
         for d in tbl.index:
             base = classify_score(tbl.loc[d, "Overall"], cfg)
@@ -314,8 +328,7 @@ def page_upload_responses():
     up = st.file_uploader("File", type=["xlsx", "csv"])
     mode = st.radio("Mode", ["Replace", "Append"], horizontal=True)
     if up is not None:
-        tmp = DATA_DIR / f"_incoming_{up.name}"
-        tmp.write_bytes(up.getvalue())
+        tmp = DATA_DIR / f"_incoming_{up.name}"; tmp.write_bytes(up.getvalue())
         try:
             incoming = load_responses(str(tmp))
         except Exception as e:
@@ -327,10 +340,8 @@ def page_upload_responses():
                 shutil.copy(tmp, RESPONSE_PATH)
             else:
                 existing = get_responses() if RESPONSE_PATH.exists() else pd.DataFrame()
-                pd.concat([existing, incoming], ignore_index=True) \
-                    .to_excel(RESPONSE_PATH, sheet_name="Responses", index=False)
-            tmp.unlink(missing_ok=True); clear_caches()
-            st.success("✅ Applied.")
+                pd.concat([existing, incoming], ignore_index=True).to_excel(RESPONSE_PATH, sheet_name="Responses", index=False)
+            tmp.unlink(missing_ok=True); clear_caches(); st.success("✅ Applied.")
 
 
 def page_upload_config():
@@ -340,14 +351,13 @@ def page_upload_config():
     c1, c2, c3 = st.columns(3)
     c1.metric("Questions", len(current.active_questions))
     c2.metric("Departments", len(current.active_departments))
-    c3.metric("Version", str(current.get("tool_version", "2.0")))
+    c3.metric("Version", str(current.get("tool_version", "3.0")))
     with open(CONFIG_PATH, "rb") as f:
         st.download_button("⬇️ Download config", f.read(), file_name="HPC_Question_Bank_Template.xlsx")
     st.markdown("---")
     up = st.file_uploader("Upload", type=["xlsx"])
     if up is not None:
-        tmp = DATA_DIR / f"_incoming_{up.name}"
-        tmp.write_bytes(up.getvalue())
+        tmp = DATA_DIR / f"_incoming_{up.name}"; tmp.write_bytes(up.getvalue())
         try:
             incoming = load_config(str(tmp))
         except Exception as e:
@@ -365,20 +375,16 @@ def page_upload_config():
         summary = st.text_area("Summary", height=80)
         if st.button("Apply ✓", type="primary", disabled=(not changed_by or not summary)):
             backup = DATA_DIR / f"HPC_Config.backup.{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
-            shutil.copy(CONFIG_PATH, backup); shutil.copy(tmp, CONFIG_PATH)
-            tmp.unlink(missing_ok=True)
-            append_change_log(str(CONFIG_PATH), [{
-                "Date": date.today().isoformat(), "Changed By": changed_by,
-                "Change Type": change_type, "Item Affected": "Multiple",
-                "Summary of Change": summary, "Reason / Approval": "Via tool"}])
-            clear_caches()
-            st.success(f"✅ Applied. Backup: {backup.name}")
+            shutil.copy(CONFIG_PATH, backup); shutil.copy(tmp, CONFIG_PATH); tmp.unlink(missing_ok=True)
+            append_change_log(str(CONFIG_PATH), [{"Date": date.today().isoformat(), "Changed By": changed_by,
+                "Change Type": change_type, "Item Affected": "Multiple", "Summary of Change": summary,
+                "Reason / Approval": "Via tool"}])
+            clear_caches(); st.success(f"✅ Applied. Backup: {backup.name}")
 
 
 def page_generate_report():
     st.markdown(f"""<div class="hpc-hero"><h1>Generate Executive Report</h1>
-    <p>Compact one-page PDF with polarisation analysis and tailored recommendations.</p></div>""",
-    unsafe_allow_html=True)
+    <p>One-page PDF with polarisation analysis and tailored recommendations.</p></div>""", unsafe_allow_html=True)
     cfg = get_config(); df = get_responses()
     if len(df) == 0:
         st.warning("No data."); return
@@ -403,8 +409,7 @@ elif page == "📊 Admin Dashboard": page_dashboard()
 elif page == "📄 Generate Executive Report": page_generate_report()
 elif page == "📥 Upload Response Data": page_upload_responses()
 elif page == "⚙️ Upload Configuration": page_upload_config()
-elif page == "🏃 PACE":
-    page_pace(str(LOOKUP_PATH), str(ACTION_PLAN_DIR))
+elif page == "🏃 PACE": page_pace(str(LOOKUP_PATH), str(ACTION_PLAN_DIR))
 elif page == "🎛️ Submit Action Plan":
     page_submit_action_plan(str(LOOKUP_PATH), str(ACTION_PLAN_DIR), get_analysis_for_dept)
 elif page == "📍 Checkpoint Update":
@@ -414,5 +419,5 @@ elif page == "🛠️ PACE Admin":
 
 st.markdown(f"""<div style="margin-top:3rem;padding-top:1rem;border-top:1px solid #E7E7E7;
 color:#8C8C8C;font-size:0.85rem;text-align:center">
-{BRAND} · v2.0 · PACE: Purpose · Alliance · Collaboration · Excellence
+{BRAND} · v3.0 · PACE: Purpose · Alliance · Collaboration · Excellence
 </div>""", unsafe_allow_html=True)
