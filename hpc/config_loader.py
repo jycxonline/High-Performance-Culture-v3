@@ -14,7 +14,6 @@ BRAND = "High Performance Diagnostic Tool - Powered by Cathay Academy"
 
 
 def _dept_name_col(df: pd.DataFrame) -> str:
-    """Tolerate either 'Department Name' or 'Department Names'."""
     for c in ["Department Name", "Department Names", "Department"]:
         if c in df.columns:
             return c

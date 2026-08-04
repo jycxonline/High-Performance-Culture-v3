@@ -1,45 +1,61 @@
-# High Performance Diagnostic Tool — v3.1 (PACE)
+# High Performance Diagnostic Tool — v3.3 (PACE)
 
 **Powered by Cathay Academy.** Framework = **PACE**: Purpose · Alliance · Collaboration · Excellence.
 
-## What changed in v3.1 (from your feedback)
+---
 
-1. **Dashboard `AttributeError` at `polarisation_bar` fixed** — the chart is rebuilt with plain
-   floats, ASCII legend labels and `getattr` guards, and **every chart on the dashboard is now
-   wrapped** so a single chart can never crash the page.
-2. **Department list updated to the 34 departments** from your Excel (APD → EXO). They flow through
-   the config, the sample response data (so every department has data), and the PACE lookup.
-3. **More professional visuals** — cleaner palette, consistent titles/gridlines, a tidy focus strip
-   instead of oversized metric text, recommendation & polarisation **cards** (no sideways scrolling),
-   and the full 34-department ranking moved into an expander so the main view stays clean.
-4. The config loader now tolerates either **"Department Name"** or **"Department Names"** headers, so
-   your exact Excel uploads cleanly.
+## ⚠️ IMPORTANT — why your app still crashed
 
-## Quick start
+The traceback you saw pointed to **`/mount/src/high-performance-culture-v3/app.py` line 255**
+calling `charts.polarisation_bar(analysis.polarisation)`. That is the **OLD code** — the previous
+fix had not yet been pushed to the deployed GitHub repo, so Streamlit Cloud was still running it.
+
+v3.3 makes this crash **impossible in three independent ways**:
+
+1. The fragile stacked `polarisation_bar` is **replaced** by a robust `variance_chart`
+   (mean ± 1 SD whiskers, only basic matplotlib) **and** a **native Streamlit distribution
+   table** that uses no matplotlib at all.
+2. **Backwards-compatibility shims** are kept, so even if some old code still calls
+   `charts.polarisation_bar(analysis.polarisation)`, it now routes to the robust chart and
+   `analysis.polarisation` still returns the data — **no AttributeError**.
+3. The **entire dashboard body is wrapped in try/except**, so nothing can white-screen the app.
+
+## ✅ How to actually fix the deployment (do this)
+
+Your Streamlit app deploys from the GitHub repo `high-performance-culture-v3`.
+You must push these files to that repo, then reboot the app:
+
+1. Unzip this package.
+2. Copy **all** contents of `hpc_tool/` into the root of your GitHub repo,
+   **overwriting** `app.py`, the `hpc/` folder, and the `data/` folder.
+3. Commit & push to the branch Streamlit deploys from (usually `main`).
+4. In Streamlit Cloud → your app → **⋮ → Reboot** (or it auto-redeploys on push).
+5. Confirm the footer reads **v3.3** — that tells you the new code is live.
+
+> Tip: In Streamlit Cloud, click **“Manage app” → Logs** and check the top line shows the new
+> commit hash after pushing. If it still shows the old commit, the push didn't reach the deployed branch.
+
+## Broader spectrum (some departments now dysfunctional)
+
+Sample data now spans the full health range:
+
+- **At Risk (dysfunctional):** ASD, PSD, OPN, IOC (scores ~2.9–3.2)
+- **Developing:** CCD, DEX, DGT, CED, ISD, PVO, SUB
+- **Performing:** most corporate/commercial teams
+- **High Performance:** CAY, FIN, GIA, GLC, EXO, SND (scores ~7.7–8.2)
+- **Split view (polarised):** IMT (Collaboration + Alliance), ENG (Alliance)
+
+## Run locally
 
 ```bash
-unzip HPC_Diagnostic_Tool_v3.1.zip
+unzip HPC_Diagnostic_Tool_v3.3.zip
 cd hpc_tool
 ./run.sh              # macOS / Linux  (or run.bat on Windows)
 ```
-Opens at `http://localhost:8501`. First run installs dependencies (~1 min).
-
-## Try it
-
-| Page | Try | You'll see |
-|---|---|---|
-| 📊 Admin Dashboard | Focus = **IMT - Information Technology** | Clear charts + polarised Alliance/Collaboration analysis + tailored recommendation cards |
-| 📊 Admin Dashboard | Focus = **Company-wide** | Larger readable charts across all 34 departments (no crash) |
-| 🏃 PACE | Any department | Runner on the straight PACE track, labelled with the department |
-
-## Deploying to Streamlit Cloud (`high-performance-culture-v3`)
-
-Replace the repo contents with this package and redeploy. The `polarisation_bar` crash and the
-department-not-found error are both resolved, and the 34 departments are loaded.
 
 ## Version
 
-- Tool: 3.1.0 · Framework: PACE · 34 departments
-- Schema (config): HPC-CONFIG-v2 (accepts "Department Name" / "Department Names")
-- Schema (lookup): PACE-DEPTLOOKUP-v1
+- Tool: 3.3.0 · Framework: PACE · 34 departments · broad health spectrum
+- `polarisation_bar` retained only as a safe alias → `variance_chart`
+- `analysis.polarisation` retained as a safe alias → `analysis.distribution`
 - Powered by Cathay Academy

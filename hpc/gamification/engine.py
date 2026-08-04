@@ -15,13 +15,11 @@ PACE_STAGES = [
     "Reflect Again", "Training - Tempo", "Race up your PACE", "Finish Line",
 ]
 STAGE_TO_INDEX = {s: i for i, s in enumerate(PACE_STAGES)}
-
 STAGE_DISPLAY = {
     "Not Started": "Not Started", "Warm-up Exercise": "Warm-up Exercise", "Training": "Training",
     "Reflect": "Reflect", "Implement Change": "Implement Change", "Reflect Again": "Reflect",
     "Training - Tempo": "Training - Tempo", "Race up your PACE": "Race 'up your PACE'", "Finish Line": "Finish Line",
 }
-
 BADGES = [
     ("Warmed Up", "Survey launched"), ("In Training", "70% participation"),
     ("First Reflection", "Report reviewed"), ("Change in Motion", "Action plan approved"),

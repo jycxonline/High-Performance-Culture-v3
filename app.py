@@ -1,7 +1,8 @@
-"""High Performance Diagnostic Tool v3.1 — PACE. Powered by Cathay Academy."""
+"""High Performance Diagnostic Tool v3.3 — PACE. Powered by Cathay Academy."""
 from __future__ import annotations
 import shutil
 import uuid
+import traceback
 from datetime import datetime, date
 from pathlib import Path
 
@@ -43,8 +44,8 @@ st.markdown(f"""<style>
     .hpc-hero p  {{ color: #D9E2F3; margin: 0.4rem 0 0 0; }}
     .band-chip {{ display:inline-block; padding:4px 12px; border-radius:14px; font-size:0.82rem;
         font-weight:700; color:white; }}
-    .band-dysf {{ background:#C0392B; }} .band-bal {{ background:#ED7D31; }}
-    .band-perf {{ background:#4472C4; }} .band-hpc {{ background:#3F7D3A; }}
+    .band-risk {{ background:#C0392B; }} .band-dev {{ background:#ED7D31; }}
+    .band-perf {{ background:#4472C4; }} .band-hp {{ background:#3F7D3A; }}
     .focus-strip {{ display:flex; gap:22px; align-items:center; flex-wrap:wrap;
         background:#F4F7FC; border:1px solid #E1E8F2; border-radius:8px; padding:10px 16px; margin:6px 0 14px; }}
     .focus-strip .fname {{ font-size:1.05rem; font-weight:700; color:{NAVY}; }}
@@ -62,17 +63,17 @@ _PRI = {"Critical": "#C0392B", "High": "#ED7D31", "Medium": "#3F7D3A", "Low": "#
 
 
 def band_chip(cls):
-    m = {"Dysfunctional Culture": "band-dysf", "Balanced Culture": "band-bal",
-         "Performing Culture": "band-perf", "High Performance Culture": "band-hpc"}
+    m = {"At Risk": "band-risk", "Developing": "band-dev",
+         "Performing": "band-perf", "High Performance": "band-hp"}
     return f'<span class="band-chip {m.get(cls, "band-perf")}">{cls}</span>'
 
 
 def _safe_chart(fn, *args, **kw):
-    """Render a chart; if it fails, show a friendly note instead of crashing the page."""
+    """Render a chart; if it fails, show a note instead of crashing the page."""
     try:
         st.pyplot(fn(*args, **kw), use_container_width=True)
     except Exception as e:
-        st.info(f"Chart could not be drawn ({type(e).__name__}). The rest of the dashboard is unaffected.")
+        st.info(f"Chart unavailable ({type(e).__name__}). The rest of the dashboard is unaffected.")
 
 
 @st.cache_data(show_spinner=False)
@@ -215,10 +216,7 @@ def _ensure_response_file():
     wb.save(RESPONSE_PATH)
 
 
-def page_dashboard():
-    st.markdown(f"""<div class="hpc-hero"><h1>Admin Dashboard</h1>
-    <p>PACE insights in one view — clear charts, polarisation &amp; variance analysis, and tailored
-    recommendations.</p></div>""", unsafe_allow_html=True)
+def _dashboard_body():
     cfg = get_config(); df = get_responses()
     if len(df) == 0: st.warning("No data."); return
 
@@ -230,10 +228,7 @@ def page_dashboard():
         min_r = st.number_input("Min responses (caution flag)", min_value=1, value=cfg.min_responses_dept)
 
     focus_key = "__ALL__" if focus_opt.startswith("Company") else focus_opt
-    try:
-        analysis = analyze(df, focus_key, cfg)
-    except Exception as e:
-        st.error(f"Could not analyse: {e}"); return
+    analysis = analyze(df, focus_key, cfg)
 
     if analysis.focus.n_respondents < min_r and analysis.focus.department != "Company-wide":
         st.warning(f"⚠️ {analysis.focus.department} has {analysis.focus.n_respondents} responses "
@@ -247,23 +242,32 @@ def page_dashboard():
         f"<span class='fk'>vs company: <b>{analysis.focus.overall - analysis.company_overall:+.2f}</b></span>"
         f"{band_chip(analysis.focus.classification)}</div>", unsafe_allow_html=True)
 
-    # Charts (each wrapped so one failure can't crash the page)
+    # Charts — each wrapped; the fragile stacked bar is gone (variance chart is robust)
     r1a, r1b = st.columns(2)
     with r1a: _safe_chart(charts.radar_chart, analysis.focus.pillar_means, analysis.company_pillar_means, analysis.focus.department)
     with r1b: _safe_chart(charts.pillar_bar, analysis.focus.pillar_means, analysis.company_pillar_means)
     r2a, r2b = st.columns(2)
-    with r2a: _safe_chart(charts.polarisation_bar, analysis.polarisation)
+    with r2a: _safe_chart(charts.variance_chart, analysis.distribution)
     with r2b: _safe_chart(charts.correlation_heatmap, analysis.correlation)
 
+    # Native distribution table (no matplotlib) — always renders
+    st.markdown("<div class='sec-title'>📊 Score Distribution by Element</div>", unsafe_allow_html=True)
+    dist_tbl = pd.DataFrame([{
+        "Element": d.pillar, "Mean": d.mean, "SD": d.std,
+        "Low % (1-4)": f"{d.pct_low:.0f}%", "Mid % (5-6)": f"{d.pct_mid:.0f}%", "High % (7-10)": f"{d.pct_high:.0f}%",
+        "Pattern": ("Split view" if d.polarised else d.variance_label),
+    } for d in analysis.distribution])
+    st.dataframe(dist_tbl, use_container_width=True, hide_index=True)
+
     st.markdown("---")
-    st.markdown("<div class='sec-title'>🔬 Polarisation &amp; Variance Analysis</div>", unsafe_allow_html=True)
+    st.markdown("<div class='sec-title'>🔬 Distribution &amp; Variance Analysis</div>", unsafe_allow_html=True)
     pcols = st.columns(2)
-    for i, pol in enumerate(analysis.polarisation):
-        badge = "🔴 Polarised" if pol.polarised else pol.variance_label
+    for i, d in enumerate(analysis.distribution):
+        badge = "🔴 Split view" if d.polarised else d.variance_label
         with pcols[i % 2]:
-            st.markdown(f"<div class='pol-card'><b>{pol.pillar}</b> "
-                        f"<span style='color:#8C8C8C'>· mean {pol.mean} · SD {pol.std} · {badge}</span><br>"
-                        f"<span style='font-size:0.92rem'>{pol.statement}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='pol-card'><b>{d.pillar}</b> "
+                        f"<span style='color:#8C8C8C'>· mean {d.mean} · SD {d.std} · {badge}</span><br>"
+                        f"<span style='font-size:0.92rem'>{d.statement}</span></div>", unsafe_allow_html=True)
 
     st.markdown("<div class='sec-title'>🎯 Tailored Actionable Recommendations</div>", unsafe_allow_html=True)
     tcols = st.columns(2)
@@ -294,6 +298,20 @@ def page_dashboard():
         st.dataframe(tbl, use_container_width=True)
 
 
+def page_dashboard():
+    st.markdown(f"""<div class="hpc-hero"><h1>Admin Dashboard</h1>
+    <p>PACE insights in one view — clear charts, distribution &amp; variance analysis, and tailored
+    recommendations.</p></div>""", unsafe_allow_html=True)
+    # Whole body wrapped so nothing can white-screen the app.
+    try:
+        _dashboard_body()
+    except Exception as e:
+        st.error("The dashboard hit an unexpected error but the app is still running. "
+                 "Try a different Focus selection, or re-upload the response data.")
+        with st.expander("Technical details"):
+            st.code(f"{type(e).__name__}: {e}\n\n{traceback.format_exc()}")
+
+
 def page_upload_responses():
     st.markdown(f"""<div class="hpc-hero"><h1>Upload Response Data</h1><p>Import .xlsx or .csv.</p></div>""", unsafe_allow_html=True)
     up = st.file_uploader("File", type=["xlsx", "csv"])
@@ -316,7 +334,7 @@ def page_upload_config():
     current = get_config()
     c1, c2, c3 = st.columns(3)
     c1.metric("Questions", len(current.active_questions)); c2.metric("Departments", len(current.active_departments))
-    c3.metric("Version", str(current.get("tool_version", "3.1")))
+    c3.metric("Version", str(current.get("tool_version", "3.3")))
     with open(CONFIG_PATH, "rb") as f:
         st.download_button("⬇️ Download config", f.read(), file_name="HPC_Question_Bank_Template.xlsx")
     st.markdown("---")
@@ -344,7 +362,7 @@ def page_upload_config():
 
 def page_generate_report():
     st.markdown(f"""<div class="hpc-hero"><h1>Generate Executive Report</h1>
-    <p>One-page PDF with polarisation analysis and tailored recommendations.</p></div>""", unsafe_allow_html=True)
+    <p>One-page PDF with distribution analysis and tailored recommendations.</p></div>""", unsafe_allow_html=True)
     cfg = get_config(); df = get_responses()
     if len(df) == 0: st.warning("No data."); return
     focus = st.selectbox("Focus", ["Company-wide (all)"] + sorted(df["Department"].unique()))
@@ -374,5 +392,5 @@ elif page == "📍 Checkpoint Update": page_checkpoint_update(str(LOOKUP_PATH), 
 elif page == "🛠️ PACE Admin": page_pace_admin(str(LOOKUP_PATH), str(ACTION_PLAN_DIR), str(DATA_DIR))
 
 st.markdown(f"""<div style="margin-top:3rem;padding-top:1rem;border-top:1px solid #E7E7E7;
-color:#8C8C8C;font-size:0.85rem;text-align:center">{BRAND} · v3.1 · PACE: Purpose · Alliance · Collaboration · Excellence</div>""",
+color:#8C8C8C;font-size:0.85rem;text-align:center">{BRAND} · v3.3 · PACE: Purpose · Alliance · Collaboration · Excellence</div>""",
 unsafe_allow_html=True)

@@ -67,21 +67,20 @@ def build_pdf(analysis, cfg, output_path, prepared_by="OD — Cathay Academy", a
                             f"{analysis_date} · Prepared by {prepared_by}", styles["small"]))
     story.append(Spacer(1, 3))
 
-    # Three compact charts: radar | pillar means | polarisation (avoids 34-dept clutter)
     radar = Image(charts.radar_png(focus.pillar_means, analysis.company_pillar_means, focus.department),
                   width=6.4 * cm, height=5.6 * cm)
     pillar = Image(charts.pillar_png(focus.pillar_means, analysis.company_pillar_means),
                    width=6.6 * cm, height=5.0 * cm)
-    polar = Image(charts.polar_png(analysis.polarisation), width=6.8 * cm, height=5.0 * cm)
-    charts_row = Table([[radar, pillar, polar]], colWidths=[6.6 * cm, 6.8 * cm, 7.0 * cm])
+    var = Image(charts.variance_png(analysis.distribution), width=6.8 * cm, height=5.0 * cm)
+    charts_row = Table([[radar, pillar, var]], colWidths=[6.6 * cm, 6.8 * cm, 7.0 * cm])
     charts_row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                                     ("ALIGN", (0, 0), (-1, -1), "CENTER")]))
     story.append(charts_row)
     story.append(Spacer(1, 4))
 
-    left = [Paragraph("Polarisation &amp; Variance Analysis", styles["h2"])]
-    for pol in analysis.polarisation:
-        left.append(Paragraph(f"• {pol.statement}", styles["body"]))
+    left = [Paragraph("Distribution &amp; Variance Analysis", styles["h2"])]
+    for d in analysis.distribution:
+        left.append(Paragraph(f"• {d.statement}", styles["body"]))
 
     right = [Paragraph("Tailored Actionable Recommendations", styles["h2"])]
     tr_rows = [["Element", "Pri.", "Recommendation"]]

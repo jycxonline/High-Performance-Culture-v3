@@ -15,7 +15,8 @@ class PillarResult:
 
 
 @dataclass
-class PolarisationStat:
+class DistributionStat:
+    """Per-element distribution + variance (robust, plain-float)."""
     pillar: str
     mean: float
     std: float
@@ -48,16 +49,21 @@ class AnalysisResult:
     correlation: pd.DataFrame
     insights: list[dict[str, str]]
     recommendations: list[dict[str, Any]]
-    polarisation: list[PolarisationStat] = field(default_factory=list)
+    distribution: list[DistributionStat] = field(default_factory=list)
     tailored_recommendations: list[dict[str, Any]] = field(default_factory=list)
     focus_dept_name: str = ""
 
+    # ---- Backwards-compat: older code referenced analysis.polarisation ----
+    @property
+    def polarisation(self) -> list[DistributionStat]:
+        return self.distribution
+
 
 def classify_score(score: float, cfg: HPCConfig) -> str:
-    if score >= cfg.band_performing_max + 0.001: return "High Performance Culture"
-    if score >= cfg.band_balanced_max + 0.001: return "Performing Culture"
-    if score >= cfg.band_dysfunctional_max + 0.001: return "Balanced Culture"
-    return "Dysfunctional Culture"
+    if score >= cfg.band_performing_max + 0.001: return "High Performance"
+    if score >= cfg.band_balanced_max + 0.001: return "Performing"
+    if score >= cfg.band_dysfunctional_max + 0.001: return "Developing"
+    return "At Risk"
 
 
 def balance_label(gap: float, cfg: HPCConfig) -> str:
@@ -68,8 +74,8 @@ def balance_label(gap: float, cfg: HPCConfig) -> str:
 
 def apply_imbalance_downgrade(base: str, gap: float, cfg: HPCConfig) -> tuple[str, bool]:
     if gap > cfg.imbalance_moderate_max:
-        order = ["Dysfunctional Culture", "Balanced Culture", "Performing Culture", "High Performance Culture"]
-        idx = order.index(base)
+        order = ["At Risk", "Developing", "Performing", "High Performance"]
+        idx = order.index(base) if base in order else len(order) - 1
         if idx > 0:
             return order[idx - 1], True
     return base, False
@@ -97,75 +103,63 @@ def _interp(p: str, s: float) -> str:
 
 
 _CLOSING = {
-    "strength": {
-        "Purpose":       "Keep reinforcing the vision at every all-hands so it stays a strength.",
-        "Alliance":      "Use this trust as the platform for tougher cross-team commitments.",
-        "Collaboration": "Document these workflows as the standard for other teams to reuse.",
-        "Excellence":    "Turn this learning habit into a visible playbook others can copy.",
-    },
-    "concern": {
-        "Purpose":       "Re-anchor the team on the top three priorities without delay.",
-        "Alliance":      "Prioritise rebuilding leadership visibility and stakeholder trust.",
-        "Collaboration": "Target the biggest hand-off bottleneck first for a quick win.",
-        "Excellence":    "Introduce a lightweight, recurring learning and feedback rhythm.",
-    },
-    "polarised": {
-        "Purpose":       "Find out which sub-teams feel disconnected from the strategy before acting.",
-        "Alliance":      "Identify which relationships are strained rather than applying a blanket fix.",
-        "Collaboration": "Map which workflows work and which don't before standardising.",
-        "Excellence":    "Learn what the high-rating group does differently and spread it.",
-    },
-    "scattered": {
-        "Purpose":       "Segment by role to locate where purpose is being lost.",
-        "Alliance":      "Break the score down by team to surface pockets of low trust.",
-        "Collaboration": "Analyse by workflow to find the specific friction points.",
-        "Excellence":    "Split by function to see where learning support is uneven.",
-    },
-    "settled": {
-        "Purpose":       "A single average is reliable here — monitor at the next wave.",
-        "Alliance":      "Views are consistent — hold the current relationship rhythm.",
-        "Collaboration": "Process experience is stable — watch for drift over time.",
-        "Excellence":    "Learning sentiment is steady — maintain the current investment.",
-    },
+    "strength": {"Purpose": "Keep reinforcing the vision at every all-hands so it stays a strength.",
+                 "Alliance": "Use this trust as the platform for tougher cross-team commitments.",
+                 "Collaboration": "Document these workflows as the standard for other teams to reuse.",
+                 "Excellence": "Turn this learning habit into a visible playbook others can copy."},
+    "concern": {"Purpose": "Re-anchor the team on the top three priorities without delay.",
+                "Alliance": "Prioritise rebuilding leadership visibility and stakeholder trust.",
+                "Collaboration": "Target the biggest hand-off bottleneck first for a quick win.",
+                "Excellence": "Introduce a lightweight, recurring learning and feedback rhythm."},
+    "split": {"Purpose": "Find out which sub-teams feel disconnected from the strategy before acting.",
+              "Alliance": "Identify which relationships are strained rather than applying a blanket fix.",
+              "Collaboration": "Map which workflows work and which don't before standardising.",
+              "Excellence": "Learn what the high-rating group does differently and spread it."},
+    "scattered": {"Purpose": "Segment by role to locate where purpose is being lost.",
+                  "Alliance": "Break the score down by team to surface pockets of low trust.",
+                  "Collaboration": "Analyse by workflow to find the specific friction points.",
+                  "Excellence": "Split by function to see where learning support is uneven."},
+    "settled": {"Purpose": "A single average is reliable here — monitor at the next wave.",
+                "Alliance": "Views are consistent — hold the current relationship rhythm.",
+                "Collaboration": "Process experience is stable — watch for drift over time.",
+                "Excellence": "Learning sentiment is steady — maintain the current investment."},
 }
 
 
-def _polarisation_for_pillar(pillar: str, scores: np.ndarray) -> PolarisationStat:
+def _distribution_for_pillar(pillar: str, scores: np.ndarray) -> DistributionStat:
+    scores = np.asarray(scores, dtype=float)
     scores = scores[~np.isnan(scores)]
     if len(scores) == 0:
-        return PolarisationStat(pillar, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False, "No data", "No data available.")
+        return DistributionStat(pillar, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False, "No data", "No data available.")
     mean = float(np.mean(scores)); std = float(np.std(scores, ddof=1) if len(scores) > 1 else 0.0)
     var = float(std ** 2); n = len(scores)
     pct_low = float(100.0 * np.sum(scores <= 4) / n)
     pct_mid = float(100.0 * np.sum((scores >= 5) & (scores <= 6)) / n)
     pct_high = float(100.0 * np.sum(scores >= 7) / n)
-
     if std >= 2.0: vlabel = "High variance"
     elif std >= 1.3: vlabel = "Moderate variance"
     else: vlabel = "Low variance"
-
-    polarised = bool(pct_low >= 25 and pct_high >= 25)
+    split = bool(pct_low >= 25 and pct_high >= 25)
     c = _CLOSING
-    if polarised:
-        stmt = (f"{pillar} is <b>polarised</b> — {pct_low:.0f}% rate it low (1–4) while {pct_high:.0f}% "
-                f"rate it high (7–10). {vlabel} (SD={std:.2f}) shows a single average hides real disagreement. "
-                f"{c['polarised'][pillar]}")
+    if split:
+        stmt = (f"{pillar} shows a <b>split view</b> — {pct_low:.0f}% rate it low (1-4) while {pct_high:.0f}% "
+                f"rate it high (7-10). {vlabel} (SD={std:.2f}) means a single average hides real disagreement. "
+                f"{c['split'][pillar]}")
     elif pct_high >= 60:
-        stmt = (f"{pillar} is a <b>broad, agreed strength</b> — {pct_high:.0f}% rate it high (7–10) with "
+        stmt = (f"{pillar} is a <b>broad, agreed strength</b> — {pct_high:.0f}% rate it high (7-10) with "
                 f"{vlabel.lower()} (SD={std:.2f}). {c['strength'][pillar]}")
     elif pct_low >= 45:
-        stmt = (f"{pillar} is a <b>shared concern</b> — {pct_low:.0f}% rate it low (1–4), {vlabel.lower()} "
-                f"(SD={std:.2f}); this is consistent, not an outlier. {c['concern'][pillar]}")
+        stmt = (f"{pillar} is a <b>shared concern</b> — {pct_low:.0f}% rate it low (1-4), {vlabel.lower()} "
+                f"(SD={std:.2f}); consistent, not an outlier. {c['concern'][pillar]}")
     elif std >= 2.0:
         stmt = (f"{pillar} shows <b>scattered views</b> (SD={std:.2f}) with no clear majority "
                 f"({pct_low:.0f}% low, {pct_mid:.0f}% mid, {pct_high:.0f}% high). {c['scattered'][pillar]}")
     else:
         stmt = (f"{pillar} shows a <b>settled, consensual view</b> (SD={std:.2f}); {pct_high:.0f}% high, "
                 f"{pct_low:.0f}% low. {c['settled'][pillar]}")
-
-    return PolarisationStat(pillar, round(mean, 2), round(std, 2), round(var, 2),
+    return DistributionStat(pillar, round(mean, 2), round(std, 2), round(var, 2),
                             round(pct_low, 1), round(pct_mid, 1), round(pct_high, 1),
-                            polarised, vlabel, stmt)
+                            split, vlabel, stmt)
 
 
 def analyze(responses: pd.DataFrame, focus_dept: str, cfg: HPCConfig) -> AnalysisResult:
@@ -226,14 +220,14 @@ def analyze(responses: pd.DataFrame, focus_dept: str, cfg: HPCConfig) -> Analysi
         pillar_results=prs, warnings=warnings,
     )
 
-    polarisation = []
+    distribution = []
     for p in PILLARS:
         s = pol_df[pol_df.Pillar == p]["Score"].to_numpy(dtype=float)
-        polarisation.append(_polarisation_for_pillar(p, s))
+        distribution.append(_distribution_for_pillar(p, s))
 
     insights = _gen_insights(focus_result, dept_pillar, imbalance_by_dept, company_pillar, cfg)
     recs = _gen_recs(focus_result)
-    tailored = _gen_tailored(focus_result, polarisation, company_pillar)
+    tailored = _gen_tailored(focus_result, distribution, company_pillar)
 
     return AnalysisResult(
         focus=focus_result,
@@ -243,7 +237,7 @@ def analyze(responses: pd.DataFrame, focus_dept: str, cfg: HPCConfig) -> Analysi
         imbalance_by_dept=imbalance_by_dept,
         correlation=correlation.round(3),
         insights=insights, recommendations=recs,
-        polarisation=polarisation, tailored_recommendations=tailored,
+        distribution=distribution, tailored_recommendations=tailored,
         focus_dept_name=focus_name,
     )
 
@@ -272,27 +266,27 @@ def _gen_insights(focus, dept_pillar, imb_by_dept, company_pillar, cfg):
 ACTION_LIBRARY = {
     "Purpose": [
         ("Refresh the strategy cascade — clarify the top 3 priorities at every all-hands.", "High",
-         "Rebuilds line-of-sight; lifts Purpose by 0.5–0.8.", "Head of Dept + Strategy Lead", "0–60 days"),
+         "Rebuilds line-of-sight; lifts Purpose by 0.5-0.8.", "Head of Dept + Strategy Lead", "0-60 days"),
         ("Run customer-impact story sessions to reconnect work to outcomes.", "Medium",
-         "Strengthens shared purpose.", "Head of Dept + CX Lead", "30–90 days"),
+         "Strengthens shared purpose.", "Head of Dept + CX Lead", "30-90 days"),
     ],
     "Alliance": [
         ("Introduce a structured joint-planning cadence with your top-5 stakeholders.", "High",
-         "Rebuilds trust; lifts Alliance by 0.5+.", "Head of Dept + BU heads", "0–60 days"),
+         "Rebuilds trust; lifts Alliance by 0.5+.", "Head of Dept + BU heads", "0-60 days"),
         ("Run 'Leader Listening' sessions and publish a 30-60-90 response plan.", "High",
-         "Signals responsiveness; raises leadership visibility.", "Head of Dept + Leadership", "0–45 days"),
+         "Signals responsiveness; raises leadership visibility.", "Head of Dept + Leadership", "0-45 days"),
     ],
     "Collaboration": [
         ("Launch a 60-day workflow rescue on the top-3 cross-team bottlenecks.", "Critical",
-         "Moves Collaboration by 0.6–1.0; cuts hand-off delays.", "Head of Dept + COO sponsor", "0–90 days"),
+         "Moves Collaboration by 0.6-1.0; cuts hand-off delays.", "Head of Dept + COO sponsor", "0-90 days"),
         ("Clarify decision rights and rationalise governance forums.", "High",
-         "Improves decision speed and role clarity.", "Head of Dept + Chief of Staff", "30–90 days"),
+         "Improves decision speed and role clarity.", "Head of Dept + Chief of Staff", "30-90 days"),
     ],
     "Excellence": [
         ("Publish a capability roadmap and safeguard the L&D budget.", "High",
-         "Preserves the differentiator under cost pressure.", "Head of Dept + P&C BP", "30–90 days"),
+         "Preserves the differentiator under cost pressure.", "Head of Dept + P&C BP", "30-90 days"),
         ("Introduce a monthly feedback ritual (peer + upward + downward).", "Medium",
-         "Builds a systematic feedback culture.", "Head of Dept + Leadership", "0–60 days"),
+         "Builds a systematic feedback culture.", "Head of Dept + Leadership", "0-60 days"),
     ],
 }
 
@@ -314,30 +308,34 @@ def _gen_recs(focus):
     return recs
 
 
-def _gen_tailored(focus, polarisation, company_pillar):
-    pol_by = {p.pillar: p for p in polarisation}
+def _gen_tailored(focus, distribution, company_pillar):
+    dist_by = {p.pillar: p for p in distribution}
     means = focus.pillar_means
     ordered = sorted(means.items(), key=lambda x: x[1])
     out = []
     for pillar, mean in ordered:
-        pol = pol_by.get(pillar)
+        d = dist_by.get(pillar)
         gap = mean - float(company_pillar[pillar])
-        if pol and pol.polarised:
+        if d and d.polarised:
             action = (f"Run a targeted listening session on {pillar} to understand why the team is split "
-                      f"({pol.pct_low:.0f}% low vs {pol.pct_high:.0f}% high) before rolling out a single fix.")
-            rationale = f"Polarised (SD={pol.std:.2f}) — a blanket action risks alienating one half."
+                      f"({d.pct_low:.0f}% low vs {d.pct_high:.0f}% high) before rolling out a single fix.")
+            rationale = f"Split view (SD={d.std:.2f}) — a blanket action risks alienating one half."
             priority = "High"
+        elif mean < 4.0:
+            action = f"Treat {pillar} as an At-Risk element — stand up a recovery plan with executive sponsorship now."
+            rationale = f"Very low mean ({mean:.2f}); systemic issue."
+            priority = "Critical"
         elif mean < 5.5:
             action = f"Prioritise a focused improvement sprint on {pillar} — the clearest drag on performance."
-            rationale = f"Low mean ({mean:.2f}); {pol.variance_label.lower() if pol else ''}."
-            priority = "Critical" if mean < 4.5 else "High"
-        elif mean >= 7.0 and pol and pol.pct_high >= 55:
+            rationale = f"Low mean ({mean:.2f}); {d.variance_label.lower() if d else ''}."
+            priority = "High"
+        elif mean >= 7.0 and d and d.pct_high >= 55:
             action = f"Codify what makes {pillar} work into a repeatable playbook for other teams."
-            rationale = f"Consistent strength ({mean:.2f}, {pol.pct_high:.0f}% high) worth scaling."
+            rationale = f"Consistent strength ({mean:.2f}, {d.pct_high:.0f}% high) worth scaling."
             priority = "Medium"
-        elif pol and pol.std >= 2.0:
+        elif d and d.std >= 2.0:
             action = f"Segment {pillar} by role/sub-team — scattered views hide pockets of risk."
-            rationale = f"High variance (SD={pol.std:.2f}) with no clear majority."
+            rationale = f"High variance (SD={d.std:.2f}) with no clear majority."
             priority = "Medium"
         else:
             action = f"Maintain steady improvement on {pillar}; monitor at the next wave."

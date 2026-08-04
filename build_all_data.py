@@ -1,4 +1,4 @@
-"""Build all Excel data files for v3.1 (PACE) — 34 departments from the attached list."""
+"""Build all Excel data for v3.3 (PACE) — 34 departments incl. dysfunctional ones."""
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -68,7 +68,6 @@ QUESTIONS = [
     ("Q40", "Excellence", "Our team is committed to continuously raising performance standards.", "Standards"),
 ]
 
-# 34 departments (from the attached Departments sheet): (id, name, parent)
 DEPARTMENTS = [
     ("D01", "APD - Airport Delivery", "Operations"),
     ("D02", "ASD - Airport Service Delivery", "Operations"),
@@ -109,7 +108,7 @@ DEPARTMENTS = [
 def _code(name): return name.split(" - ")[0].strip()
 
 CONFIG_SETTINGS = [
-    ("tool_version", "3.1", "Tool version.", "Read-only"),
+    ("tool_version", "3.3", "Tool version.", "Read-only"),
     ("schema_version", "HPC-CONFIG-v2", "Schema.", "Read-only"),
     ("framework", "PACE", "Purpose · Alliance · Collaboration · Excellence.", "Read-only"),
     ("last_updated_date", date.today().isoformat(), "Auto-stamped.", "Read-only"),
@@ -118,8 +117,8 @@ CONFIG_SETTINGS = [
     ("scale_max", 10, "Max rating.", "Editable"),
     ("scale_label_min", "Strongly Disagree / Very Poor", "Low label.", "Editable"),
     ("scale_label_max", "Strongly Agree / Excellent", "High label.", "Editable"),
-    ("band_dysfunctional_max", 3.99, "Dysfunc upper.", "Editable"),
-    ("band_balanced_max", 5.99, "Balanced upper.", "Editable"),
+    ("band_dysfunctional_max", 3.99, "At-Risk upper.", "Editable"),
+    ("band_balanced_max", 5.99, "Developing upper.", "Editable"),
     ("band_performing_max", 7.99, "Performing upper.", "Editable"),
     ("imbalance_moderate_max", 2.00, "Downgrade threshold.", "Editable"),
     ("imbalance_wellbalanced_max", 1.00, "Well-balanced ceiling.", "Editable"),
@@ -153,8 +152,7 @@ def build_config():
     for j, h in enumerate(["Dept ID", "Department Name", "Parent Group", "Active / Inactive", "Display Order", "HR / Business Owner", "Notes"], start=1):
         _header(wsd.cell(row=1, column=j), h)
     for i, (did, name, parent) in enumerate(DEPARTMENTS, start=2):
-        vals = (did, name, parent, "Active", i - 1, "", "")
-        for j, v in enumerate(vals, start=1):
+        for j, v in enumerate((did, name, parent, "Active", i - 1, "", ""), start=1):
             wsd.cell(row=i, column=j, value=v); _data(wsd.cell(row=i, column=j))
     dvd = DataValidation(type="list", formula1='"Active,Inactive"', allow_blank=False); dvd.add(f"D2:D{len(DEPARTMENTS)+1}"); wsd.add_data_validation(dvd)
     for col, w in {"A": 10, "B": 46, "C": 16, "D": 16, "E": 12, "F": 24, "G": 30}.items(): wsd.column_dimensions[col].width = w
@@ -170,7 +168,7 @@ def build_config():
     wscl = wb.create_sheet("Change Log")
     for j, h in enumerate(["Date", "Changed By", "Change Type", "Item Affected", "Summary of Change", "Reason / Approval"], start=1): _header(wscl.cell(row=1, column=j), h)
     wscl.cell(row=2, column=1, value=date.today().isoformat()); wscl.cell(row=2, column=2, value="Cathay Academy")
-    wscl.cell(row=2, column=3, value="Initial"); wscl.cell(row=2, column=4, value="All"); wscl.cell(row=2, column=5, value="Baseline v3.1 — 34 departments")
+    wscl.cell(row=2, column=3, value="Initial"); wscl.cell(row=2, column=4, value="All"); wscl.cell(row=2, column=5, value="Baseline v3.3 — 34 depts, broad spectrum")
     for j in range(1, 7): _data(wscl.cell(row=2, column=j))
     wss = wb.create_sheet("_SCHEMA"); wss["A2"] = "schema_name"; wss["B2"] = "HPC-CONFIG-v2"; wss.sheet_state = "hidden"
     wb.save("/home/claude/hpc_tool/data/HPC_Question_Bank_Template.xlsx")
@@ -181,22 +179,41 @@ PILLAR_QS = {}
 for qid, pillar, text, _ in QUESTIONS:
     PILLAR_QS.setdefault(pillar, []).append((qid, text))
 
-# Elements to render polarised (bimodal) per dept for realism
-POLARISED = {"IMT - Information Technology": {"Collaboration", "Alliance"},
-             "IOC - Integrated Operations": {"Collaboration"},
-             "ENG - Engineering": {"Alliance"}}
+DEPT_TIER = {
+    "CAY - Cathay Academy": "high", "FIN - Finance": "high", "GIA - Group Internal Audit": "high",
+    "GLC - Group Legal & Compliance": "high", "EXO - Executive Team": "high", "SND - Sales & Distribution": "high",
+    "APD - Airport Delivery": "perform", "CAF - Corporate Affairs": "perform", "CGO - Cargo": "perform",
+    "GSD - Group Sustainability": "perform", "PPL - People - Employee Experience": "perform",
+    "FOP - Flight Operations": "perform", "GMD - Group Medical": "perform", "GOR - Group Opportunities and Risks": "perform",
+    "GSR - Group Safety and Operational Risk Management": "perform", "PLN - Planning": "perform",
+    "CRR - Customer Relationship & Retail": "perform", "GBS - Global Business Service": "perform",
+    "LDC - Logistics and Distribution Centre": "perform", "REV - Revenue Management": "perform",
+    "BIM - Brand, Insights & Marketing Communications": "perform",
+    "CCD - Customer Care": "develop", "DEX - Digital Experience": "develop", "DGT - Digital": "develop",
+    "CED - Customer Experience Design": "develop", "ISD - Inflight Service Delivery": "develop",
+    "PVO - Procurement & Aircraft Trading": "develop", "SUB - Subsidiaries": "develop",
+    "ASD - Airport Service Delivery": "risk", "PSD - Property and Service": "risk",
+    "OPN - Operations": "risk", "IOC - Integrated Operations": "risk",
+    "IMT - Information Technology": "polarised", "ENG - Engineering": "polarised",
+}
+TIER_BASE = {"high": 8.0, "perform": 6.8, "develop": 5.2, "risk": 3.2, "polarised": 5.4}
 
 
-def _profile(name, parent):
-    """Deterministic-ish PACE profile per department."""
-    base = {"Corporate": 7.0, "Operations": 6.6, "Commercial": 6.9}.get(parent, 6.8)
-    r = random.Random(hash(name) & 0xffff)
-    return {
-        "Purpose": max(3.5, min(9.0, base + r.uniform(-0.8, 1.3))),
-        "Alliance": max(3.5, min(9.0, base + r.uniform(-1.2, 1.0))),
-        "Collaboration": max(3.2, min(8.8, base + r.uniform(-1.5, 0.9))),
-        "Excellence": max(3.8, min(9.2, base + r.uniform(-0.6, 1.3))),
+def _profile(name):
+    tier = DEPT_TIER.get(name, "perform")
+    base = TIER_BASE[tier]
+    rr = random.Random(hash(name) & 0xffff)
+    spread = 0.9 if tier != "risk" else 0.7
+    return tier, {
+        "Purpose": max(1.5, min(9.5, base + rr.uniform(-spread, spread + 0.4))),
+        "Alliance": max(1.5, min(9.5, base + rr.uniform(-spread - 0.3, spread))),
+        "Collaboration": max(1.3, min(9.3, base + rr.uniform(-spread - 0.5, spread - 0.2))),
+        "Excellence": max(1.8, min(9.5, base + rr.uniform(-spread, spread + 0.4))),
     }
+
+
+POLARISED_ELEMENTS = {"IMT - Information Technology": {"Collaboration", "Alliance"},
+                      "ENG - Engineering": {"Alliance"}}
 
 
 def build_responses(per_dept=14):
@@ -211,16 +228,17 @@ def build_responses(per_dept=14):
     base_dt = datetime(2026, 7, 1, 9, 0, 0)
     row = 2; cnt = 1
     for did, name, parent in DEPARTMENTS:
-        prof = _profile(name, parent)
+        tier, prof = _profile(name)
         for r_i in range(per_dept):
             sid = f"HPC-2026-{cnt:05d}"; cnt += 1
             ts = base_dt + timedelta(hours=cnt, minutes=random.randint(0, 59))
             rid = f"EMP-{random.randint(10000, 99999)}"; po = random.gauss(0, 0.6)
             for pillar, qid, qtext in all_q:
-                if name in POLARISED and pillar in POLARISED[name]:
-                    s = clamp(random.gauss(prof[pillar] - 2.2, 1.0)) if r_i % 2 == 0 else clamp(random.gauss(prof[pillar] + 2.2, 1.0))
+                if name in POLARISED_ELEMENTS and pillar in POLARISED_ELEMENTS[name]:
+                    s = clamp(random.gauss(prof[pillar] - 2.4, 1.0)) if r_i % 2 == 0 else clamp(random.gauss(prof[pillar] + 2.4, 1.0))
                 else:
-                    s = clamp(random.gauss(prof[pillar] + po, 1.4))
+                    sd = 1.2 if tier == "risk" else 1.5
+                    s = clamp(random.gauss(prof[pillar] + po, sd))
                 ws.cell(row=row, column=1, value=sid); ws.cell(row=row, column=2, value=ts.strftime("%Y-%m-%d %H:%M:%S"))
                 ws.cell(row=row, column=3, value=name); ws.cell(row=row, column=4, value=rid)
                 ws.cell(row=row, column=5, value=qid); ws.cell(row=row, column=6, value=qtext)
@@ -228,7 +246,7 @@ def build_responses(per_dept=14):
                 row += 1
     for col, w in {"A": 18, "B": 20, "C": 40, "D": 14, "E": 12, "F": 60, "G": 16, "H": 8}.items(): ws.column_dimensions[col].width = w
     wb.save("/home/claude/hpc_tool/data/HPC_Response_Data_Template.xlsx")
-    print(f"Responses saved ({row - 1} rows across {len(DEPARTMENTS)} depts).")
+    print(f"Responses saved ({row - 1} rows across {len(DEPARTMENTS)} depts, broad spectrum).")
 
 
 def build_dept_lookup():
@@ -244,11 +262,8 @@ def build_dept_lookup():
                "Report Reviewed", "Action Plan Submitted", "Checkpoint 1 Completed", "Checkpoint 2 Completed",
                "Checkpoint 3 Completed", "Finish Line Reached", "Last Updated Date", "Admin Notes"]
     for j, h in enumerate(headers, start=1): _header(ws.cell(row=1, column=j), h)
-
-    colours = list({"Navy", "Sky Blue", "Emerald", "Coral", "Charcoal", "Silver", "Gold", "Teal", "Crimson", "Amber"})
     colours = ["Navy", "Sky Blue", "Emerald", "Coral", "Charcoal", "Silver", "Gold", "Teal", "Crimson", "Amber"]
     runners = ["Sprinter", "Middle-Dist.", "Marathoner", "Relay Runner"]
-    # spread of completion/stage patterns
     pattern = [
         (0.55, "Warm-up Exercise", (False, False, False, False, False, False)),
         (0.72, "Training", (False, False, False, False, False, False)),
@@ -257,17 +272,16 @@ def build_dept_lookup():
         (0.92, "Reflect Again", (True, True, True, False, False, False)),
         (0.95, "Training - Tempo", (True, True, True, True, False, False)),
     ]
-    r = random.Random(7)
+    rr = random.Random(7)
     for i, (did, name, parent) in enumerate(DEPARTMENTS, start=2):
         code = _code(name)
-        expected = r.choice([45, 60, 80, 95, 110, 140, 180, 220])
+        expected = rr.choice([45, 60, 80, 95, 110, 140, 180, 220])
         if name == "CAY - Cathay Academy":
             pct, stage, flags = 0.93, "Finish Line", (True, True, True, True, True, True)
         else:
-            pct, stage, flags = pattern[(i - 2) % len(pattern)]
-            pct += r.uniform(-0.05, 0.05)
+            pct, stage, flags = pattern[(i - 2) % len(pattern)]; pct += rr.uniform(-0.05, 0.05)
         actual = max(0, int(round(expected * pct)))
-        rr, ap, c1, c2, c3, da = flags
+        r_, a_, c1, c2, c3, da = flags
         ws.cell(row=i, column=1, value=did); ws.cell(row=i, column=2, value=name); ws.cell(row=i, column=3, value=code)
         ws.cell(row=i, column=4, value=expected); ws.cell(row=i, column=5, value=actual)
         ws.cell(row=i, column=6, value=f"=IF(D{i}=0,0,E{i}/D{i})"); ws.cell(row=i, column=6).number_format = "0.0%"
@@ -275,12 +289,10 @@ def build_dept_lookup():
         ws.cell(row=i, column=8, value=colours[(i - 2) % len(colours)])
         ws.cell(row=i, column=9, value=f'=IF(D{i}=0,"Not set",IF(F{i}>=0.7,"In Training",IF(F{i}>=0.3,"Warming up","Not started")))')
         ws.cell(row=i, column=10, value=stage)
-        for cidx, flag in zip(range(11, 17), (rr, ap, c1, c2, c3, da)):
+        for cidx, flag in zip(range(11, 17), (r_, a_, c1, c2, c3, da)):
             ws.cell(row=i, column=cidx, value="Yes" if flag else "No")
-        ws.cell(row=i, column=17, value=date.today().isoformat())
-        ws.cell(row=i, column=18, value="")
+        ws.cell(row=i, column=17, value=date.today().isoformat()); ws.cell(row=i, column=18, value="")
         for j in range(1, 19): _data(ws.cell(row=i, column=j))
-
     widths = {"A": 12, "B": 46, "C": 10, "D": 14, "E": 12, "F": 12, "G": 14, "H": 14, "I": 14,
               "J": 20, "K": 14, "L": 16, "M": 16, "N": 16, "O": 16, "P": 16, "Q": 14, "R": 30}
     for col, w in widths.items(): ws.column_dimensions[col].width = w
