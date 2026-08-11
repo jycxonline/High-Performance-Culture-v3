@@ -82,7 +82,7 @@ def load_config(path: str | Path) -> HPCConfig:
     questions["Question ID"] = questions["Question ID"].astype(str).str.strip()
     questions["Pillar"] = questions["Pillar"].astype(str).str.strip()
     # Legacy support: treat any 'Collaboration' pillar as 'Coordination'
-    questions["Pillar"] = questions["Pillar"].replace({"Collaboration": "Coordination"})
+    questions["Pillar"] = questions["Pillar"].replace({"Coordination": "Coordination"})
     questions["Active / Inactive"] = questions["Active / Inactive"].fillna("Active").astype(str).str.strip()
     questions["Display Order"] = pd.to_numeric(questions["Display Order"], errors="coerce").fillna(9999)
 
