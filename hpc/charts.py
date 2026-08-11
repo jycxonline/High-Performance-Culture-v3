@@ -1,8 +1,6 @@
 """Charts for the High Performance Diagnostic Tool. PACE. Robust + professional.
 
-The old fragile stacked 'polarisation_bar' is replaced by a robust variance chart.
-`polarisation_bar` is kept as a BACKWARDS-COMPAT alias so any older code that still
-calls charts.polarisation_bar(...) routes to the robust chart instead of crashing.
+`polarisation_bar` is kept as a BACKWARDS-COMPAT alias -> variance_chart.
 """
 from __future__ import annotations
 import io
@@ -96,7 +94,6 @@ def pillar_bar(pillar_means, company_means, figsize=(5.6, 4.2)):
 
 
 def _dist_field(item, name, default=0.0):
-    """Read a field whether item is a DistributionStat, a dict, or has attrs."""
     try:
         if isinstance(item, dict):
             return item.get(name, default)
@@ -106,12 +103,7 @@ def _dist_field(item, name, default=0.0):
 
 
 def variance_chart(distribution, figsize=(5.8, 4.2)):
-    """
-    Robust replacement for the stacked polarisation bar.
-    Each element: mean dot with a +/- 1 SD whisker on health bands.
-    Only ax.plot / ax.scatter — no stacked bars, no fancy patches.
-    Accepts a list of DistributionStat OR dicts.
-    """
+    """Robust distribution/variance chart: mean +/- 1 SD whiskers on health bands."""
     fig, ax = plt.subplots(figsize=figsize)
     pillars = [str(_dist_field(d, "pillar", "")) for d in distribution]
     means = [float(_dist_field(d, "mean", 0.0) or 0.0) for d in distribution]
@@ -142,9 +134,9 @@ def variance_chart(distribution, figsize=(5.8, 4.2)):
     return fig
 
 
-# --- Backwards-compat alias: older app.py called charts.polarisation_bar(...) ---
+# --- Backwards-compat alias ---
 def polarisation_bar(distribution, figsize=(5.8, 4.2)):
-    """Deprecated name. Routes to the robust variance_chart so old calls don't crash."""
+    """Deprecated name. Routes to variance_chart so old calls don't crash."""
     return variance_chart(distribution, figsize=figsize)
 
 
@@ -200,6 +192,6 @@ def ranking_bar(all_depts, company_overall, focus=None, figsize=None, max_rows=N
 def radar_png(f, c, l="Selected"): return _to_png(radar_chart(f, c, l))
 def pillar_png(f, c): return _to_png(pillar_bar(f, c))
 def variance_png(d): return _to_png(variance_chart(d))
-def polar_png(d): return _to_png(variance_chart(d))  # compat alias
+def polar_png(d): return _to_png(variance_chart(d))
 def heatmap_png(c): return _to_png(correlation_heatmap(c))
 def ranking_png(a, c, focus=None, max_rows=None): return _to_png(ranking_bar(a, c, focus, max_rows=max_rows))

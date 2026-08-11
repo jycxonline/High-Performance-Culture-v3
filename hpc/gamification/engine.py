@@ -151,7 +151,7 @@ def badges_earned(d):
 def checkpoint_challenges(weakest_pillar=None):
     hint = {"Purpose": "This is your priority element — anchor your update here.",
             "Alliance": "Stakeholder trust and leadership visibility may be your biggest headwind.",
-            "Collaboration": "Ways of working and decision-making are your primary drag.",
+            "Coordination": "Ways of working and decision-making are your primary drag.",
             "Excellence": "Learning and continuous improvement need to be more systematic."}.get(weakest_pillar, "")
     return {
         "Reflect — Purpose Alignment": {
@@ -159,11 +159,11 @@ def checkpoint_challenges(weakest_pillar=None):
             "challenge": "Pacing check: some runners may not see how their leg connects to the race strategy.",
             "priority_hint": hint if weakest_pillar == "Purpose" else "",
             "prompt": "Update on how you've strengthened purpose/direction."},
-        "Training Tempo — Alliance & Collaboration": {
+        "Training Tempo — Alliance & Coordination": {
             "focus": "Leadership, relationships, ways of working.",
             "challenge": "Tempo check: hand-offs between team-mates need cleaner exchanges to hold the pace.",
-            "priority_hint": hint if weakest_pillar in ("Alliance", "Collaboration") else "",
-            "prompt": "Update on alliance/collaboration."},
+            "priority_hint": hint if weakest_pillar in ("Alliance", "Coordination") else "",
+            "prompt": "Update on alliance/coordination."},
         "Race up your PACE — Excellence Momentum": {
             "focus": "Learning, feedback, continuous improvement.",
             "challenge": "Final surge: sustained learning and feedback are needed to hold your PACE to the line.",

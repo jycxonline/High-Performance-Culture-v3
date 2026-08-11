@@ -1,4 +1,4 @@
-"""High Performance Diagnostic Tool v3.3 — PACE. Powered by Cathay Academy."""
+"""High Performance Diagnostic Tool v3.4 — PACE. Powered by Cathay Academy."""
 from __future__ import annotations
 import shutil
 import uuid
@@ -69,7 +69,6 @@ def band_chip(cls):
 
 
 def _safe_chart(fn, *args, **kw):
-    """Render a chart; if it fails, show a note instead of crashing the page."""
     try:
         st.pyplot(fn(*args, **kw), use_container_width=True)
     except Exception as e:
@@ -132,7 +131,7 @@ with st.sidebar:
 def page_home():
     st.markdown(f"""<div class="hpc-hero"><h1>High Performance Diagnostic Tool</h1>
     <p>Diagnostic across the <b>PACE</b> framework — <b>P</b>urpose · <b>A</b>lliance ·
-    <b>C</b>ollaboration · <b>E</b>xcellence. {BRAND}.</p></div>""", unsafe_allow_html=True)
+    <b>C</b>oordination · <b>E</b>xcellence. {BRAND}.</p></div>""", unsafe_allow_html=True)
     cfg = get_config(); df = get_responses()
     if len(df) == 0: st.info("No response data loaded yet."); return
     cp = df.groupby("Pillar")["Score"].mean().reindex(PILLARS)
@@ -149,7 +148,7 @@ def page_home():
 
 def page_questionnaire():
     st.markdown(f"""<div class="hpc-hero"><h1>Take the Questionnaire</h1>
-    <p>Anonymous · 40 questions across Purpose · Alliance · Collaboration · Excellence.
+    <p>Anonymous · 40 questions across Purpose · Alliance · Coordination · Excellence.
     Every question must be answered before you can submit.</p></div>""", unsafe_allow_html=True)
     cfg = get_config(); active = cfg.active_questions; depts = cfg.active_departments
     if not depts: st.error("No active departments."); return
@@ -242,7 +241,6 @@ def _dashboard_body():
         f"<span class='fk'>vs company: <b>{analysis.focus.overall - analysis.company_overall:+.2f}</b></span>"
         f"{band_chip(analysis.focus.classification)}</div>", unsafe_allow_html=True)
 
-    # Charts — each wrapped; the fragile stacked bar is gone (variance chart is robust)
     r1a, r1b = st.columns(2)
     with r1a: _safe_chart(charts.radar_chart, analysis.focus.pillar_means, analysis.company_pillar_means, analysis.focus.department)
     with r1b: _safe_chart(charts.pillar_bar, analysis.focus.pillar_means, analysis.company_pillar_means)
@@ -250,7 +248,6 @@ def _dashboard_body():
     with r2a: _safe_chart(charts.variance_chart, analysis.distribution)
     with r2b: _safe_chart(charts.correlation_heatmap, analysis.correlation)
 
-    # Native distribution table (no matplotlib) — always renders
     st.markdown("<div class='sec-title'>📊 Score Distribution by Element</div>", unsafe_allow_html=True)
     dist_tbl = pd.DataFrame([{
         "Element": d.pillar, "Mean": d.mean, "SD": d.std,
@@ -302,7 +299,6 @@ def page_dashboard():
     st.markdown(f"""<div class="hpc-hero"><h1>Admin Dashboard</h1>
     <p>PACE insights in one view — clear charts, distribution &amp; variance analysis, and tailored
     recommendations.</p></div>""", unsafe_allow_html=True)
-    # Whole body wrapped so nothing can white-screen the app.
     try:
         _dashboard_body()
     except Exception as e:
@@ -334,7 +330,7 @@ def page_upload_config():
     current = get_config()
     c1, c2, c3 = st.columns(3)
     c1.metric("Questions", len(current.active_questions)); c2.metric("Departments", len(current.active_departments))
-    c3.metric("Version", str(current.get("tool_version", "3.3")))
+    c3.metric("Version", str(current.get("tool_version", "3.4")))
     with open(CONFIG_PATH, "rb") as f:
         st.download_button("⬇️ Download config", f.read(), file_name="HPC_Question_Bank_Template.xlsx")
     st.markdown("---")
@@ -392,5 +388,5 @@ elif page == "📍 Checkpoint Update": page_checkpoint_update(str(LOOKUP_PATH), 
 elif page == "🛠️ PACE Admin": page_pace_admin(str(LOOKUP_PATH), str(ACTION_PLAN_DIR), str(DATA_DIR))
 
 st.markdown(f"""<div style="margin-top:3rem;padding-top:1rem;border-top:1px solid #E7E7E7;
-color:#8C8C8C;font-size:0.85rem;text-align:center">{BRAND} · v3.3 · PACE: Purpose · Alliance · Collaboration · Excellence</div>""",
+color:#8C8C8C;font-size:0.85rem;text-align:center">{BRAND} · v3.4 · PACE: Purpose · Alliance · Coordination · Excellence</div>""",
 unsafe_allow_html=True)

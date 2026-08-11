@@ -82,18 +82,18 @@ def apply_imbalance_downgrade(base: str, gap: float, cfg: HPCConfig) -> tuple[st
 
 
 PILLAR_INTERPRETATIONS = {
-    "Purpose":       {"strong": "Strategic clarity and shared direction are a genuine strength.",
-                      "middle": "Direction is understood, but line-of-sight to outcomes can be sharpened.",
-                      "weak":   "Weak strategic clarity — teams are unsure why they exist or what to prioritise."},
-    "Alliance":      {"strong": "Leadership, trust and stakeholder relationships are a real strength.",
-                      "middle": "Relationships and communication are adequate but not distinctive.",
-                      "weak":   "Leadership visibility and cross-functional trust need active rebuilding."},
-    "Collaboration": {"strong": "Ways of working, systems and decision-making enable performance.",
-                      "middle": "Ways of working are functional but generate friction under pressure.",
-                      "weak":   "Primary drag on performance — systems, tools and hand-offs create friction."},
-    "Excellence":    {"strong": "Learning, feedback and continuous improvement are the differentiator.",
-                      "middle": "Learning and improvement are present but not yet systematic.",
-                      "weak":   "Weak learning muscle — improvement is ad hoc rather than a habit."},
+    "Purpose":      {"strong": "Strategic clarity and shared direction are a genuine strength.",
+                     "middle": "Direction is understood, but line-of-sight to outcomes can be sharpened.",
+                     "weak":   "Weak strategic clarity — teams are unsure why they exist or what to prioritise."},
+    "Alliance":     {"strong": "Leadership, trust and stakeholder relationships are a real strength.",
+                     "middle": "Relationships and communication are adequate but not distinctive.",
+                     "weak":   "Leadership visibility and cross-functional trust need active rebuilding."},
+    "Coordination": {"strong": "Ways of working, systems and decision-making enable performance.",
+                     "middle": "Ways of working are functional but generate friction under pressure.",
+                     "weak":   "Primary drag on performance — systems, tools and hand-offs create friction."},
+    "Excellence":   {"strong": "Learning, feedback and continuous improvement are the differentiator.",
+                     "middle": "Learning and improvement are present but not yet systematic.",
+                     "weak":   "Weak learning muscle — improvement is ad hoc rather than a habit."},
 }
 
 
@@ -105,23 +105,23 @@ def _interp(p: str, s: float) -> str:
 _CLOSING = {
     "strength": {"Purpose": "Keep reinforcing the vision at every all-hands so it stays a strength.",
                  "Alliance": "Use this trust as the platform for tougher cross-team commitments.",
-                 "Collaboration": "Document these workflows as the standard for other teams to reuse.",
+                 "Coordination": "Document these workflows as the standard for other teams to reuse.",
                  "Excellence": "Turn this learning habit into a visible playbook others can copy."},
     "concern": {"Purpose": "Re-anchor the team on the top three priorities without delay.",
                 "Alliance": "Prioritise rebuilding leadership visibility and stakeholder trust.",
-                "Collaboration": "Target the biggest hand-off bottleneck first for a quick win.",
+                "Coordination": "Target the biggest hand-off bottleneck first for a quick win.",
                 "Excellence": "Introduce a lightweight, recurring learning and feedback rhythm."},
     "split": {"Purpose": "Find out which sub-teams feel disconnected from the strategy before acting.",
               "Alliance": "Identify which relationships are strained rather than applying a blanket fix.",
-              "Collaboration": "Map which workflows work and which don't before standardising.",
+              "Coordination": "Map which workflows work and which don't before standardising.",
               "Excellence": "Learn what the high-rating group does differently and spread it."},
     "scattered": {"Purpose": "Segment by role to locate where purpose is being lost.",
                   "Alliance": "Break the score down by team to surface pockets of low trust.",
-                  "Collaboration": "Analyse by workflow to find the specific friction points.",
+                  "Coordination": "Analyse by workflow to find the specific friction points.",
                   "Excellence": "Split by function to see where learning support is uneven."},
     "settled": {"Purpose": "A single average is reliable here — monitor at the next wave.",
                 "Alliance": "Views are consistent — hold the current relationship rhythm.",
-                "Collaboration": "Process experience is stable — watch for drift over time.",
+                "Coordination": "Process experience is stable — watch for drift over time.",
                 "Excellence": "Learning sentiment is steady — maintain the current investment."},
 }
 
@@ -167,6 +167,8 @@ def analyze(responses: pd.DataFrame, focus_dept: str, cfg: HPCConfig) -> Analysi
     if required - set(responses.columns):
         raise ValueError(f"Missing columns: {required - set(responses.columns)}")
     df = responses.copy()
+    # Legacy support: map any 'Collaboration' scores to 'Coordination'
+    df["Pillar"] = df["Pillar"].astype(str).str.strip().replace({"Collaboration": "Coordination"})
     df["Score"] = pd.to_numeric(df["Score"], errors="coerce")
     df = df.dropna(subset=["Score"])
     if len(df) == 0:
@@ -276,9 +278,9 @@ ACTION_LIBRARY = {
         ("Run 'Leader Listening' sessions and publish a 30-60-90 response plan.", "High",
          "Signals responsiveness; raises leadership visibility.", "Head of Dept + Leadership", "0-45 days"),
     ],
-    "Collaboration": [
+    "Coordination": [
         ("Launch a 60-day workflow rescue on the top-3 cross-team bottlenecks.", "Critical",
-         "Moves Collaboration by 0.6-1.0; cuts hand-off delays.", "Head of Dept + COO sponsor", "0-90 days"),
+         "Moves Coordination by 0.6-1.0; cuts hand-off delays.", "Head of Dept + COO sponsor", "0-90 days"),
         ("Clarify decision rights and rationalise governance forums.", "High",
          "Improves decision speed and role clarity.", "Head of Dept + Chief of Staff", "30-90 days"),
     ],
@@ -299,7 +301,7 @@ def _gen_recs(focus):
         n = 2 if i < 2 else 1
         for action, priority, impact, owner, timeline in actions[:n]:
             if i == 0 and priority == "High":
-                priority = "Critical" if pillar == "Collaboration" or mean < 4.0 else "High"
+                priority = "Critical" if pillar == "Coordination" or mean < 4.0 else "High"
             recs.append({"Action": action, "Pillar": pillar, "Priority": priority,
                          "Expected Impact": impact, "Owner": owner, "Timeline": timeline})
     recs.append({"Action": "Re-run the PACE diagnostic in 6 months and compare movement.", "Pillar": "All",
@@ -328,7 +330,7 @@ def _gen_tailored(focus, distribution, company_pillar):
         elif mean < 5.5:
             action = f"Prioritise a focused improvement sprint on {pillar} — the clearest drag on performance."
             rationale = f"Low mean ({mean:.2f}); {d.variance_label.lower() if d else ''}."
-            priority = "High"
+            priority = "Critical" if mean < 4.5 else "High"
         elif mean >= 7.0 and d and d.pct_high >= 55:
             action = f"Codify what makes {pillar} work into a repeatable playbook for other teams."
             rationale = f"Consistent strength ({mean:.2f}, {d.pct_high:.0f}% high) worth scaling."

@@ -107,7 +107,7 @@ def page_submit_action_plan(lookup_path, action_plan_dir, get_analysis_for_dept)
     with st.form(f"ap_{dept.dept_id}"):
         st.markdown("### Action Plan")
         insight = st.text_area("1. Key insight from the report", value=existing.get("insight", ""), height=80)
-        pillars = ["Purpose", "Alliance", "Collaboration", "Excellence"]
+        pillars = ["Purpose", "Alliance", "Coordination", "Excellence"]
         default_p = existing.get("priority_pillar") or (weakest or "Purpose")
         pillar = st.selectbox("2. Priority element", pillars, index=pillars.index(default_p) if default_p in pillars else 0)
         commitment = st.text_area("3. Commitment statement", value=existing.get("commitment", ""), height=100)

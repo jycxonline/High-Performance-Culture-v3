@@ -1,4 +1,4 @@
-"""Build all Excel data for v3.3 (PACE) — 34 departments incl. dysfunctional ones."""
+"""Build all Excel data for v3.4 (PACE) — 34 depts, British English, Coordination element."""
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -25,20 +25,21 @@ def _data(cell, wrap=True, bold=False):
     cell.border = border
 
 
+# 40 questions — Coordination element (was Collaboration), British English spelling
 QUESTIONS = [
     ("Q01", "Purpose", "Our team has a clear and compelling vision that guides our work.", "Vision"),
-    ("Q02", "Purpose", "I understand how my role contributes to the organization's overall mission.", "Mission"),
+    ("Q02", "Purpose", "I understand how my role contributes to the organisation's overall mission.", "Mission"),
     ("Q03", "Purpose", "Our strategic priorities are clearly communicated and consistently reinforced.", "Priorities"),
     ("Q04", "Purpose", "Our department maintains a strong focus on serving the needs of our customers.", "Customer focus"),
     ("Q05", "Purpose", "Team members share common goals and work together toward the same outcomes.", "Shared goals"),
-    ("Q06", "Purpose", "My daily work is meaningfully aligned with the organization's strategic objectives.", "Alignment"),
+    ("Q06", "Purpose", "My daily work is meaningfully aligned with the organisation's strategic objectives.", "Alignment"),
     ("Q07", "Purpose", "Leadership regularly connects our team's work to broader business outcomes.", "Line-of-sight"),
     ("Q08", "Purpose", "Our team's purpose is well understood by our internal and external stakeholders.", "Clarity"),
     ("Q09", "Purpose", "When priorities change, leadership clearly explains the reasons and the new direction.", "Change"),
     ("Q10", "Purpose", "I feel a strong sense of purpose and meaning in the work I do here.", "Meaning"),
-    ("Q11", "Alliance", "Our leaders demonstrate the behaviors expected of a high-performing culture.", "Leadership"),
+    ("Q11", "Alliance", "Our leaders demonstrate the behaviours expected of a high-performing culture.", "Leadership"),
     ("Q12", "Alliance", "Our team manages stakeholder relationships effectively and professionally.", "Stakeholders"),
-    ("Q13", "Alliance", "Relationships within our team are characterized by mutual respect and trust.", "Trust"),
+    ("Q13", "Alliance", "Relationships within our team are characterised by mutual respect and trust.", "Trust"),
     ("Q14", "Alliance", "Cross-functional collaboration between departments is effective and productive.", "Cross-functional"),
     ("Q15", "Alliance", "Internal communication within our team is timely, clear, and consistent.", "Internal comms"),
     ("Q16", "Alliance", "External communication with customers, partners, and stakeholders is well-managed.", "External comms"),
@@ -46,25 +47,25 @@ QUESTIONS = [
     ("Q18", "Alliance", "Conflicts within our team are addressed constructively and resolved in a timely manner.", "Conflict"),
     ("Q19", "Alliance", "Leaders actively listen and act on feedback from team members.", "Listening"),
     ("Q20", "Alliance", "Our team consistently builds and sustains strong working partnerships with others.", "Partnerships"),
-    ("Q21", "Collaboration", "Our internal processes and workflows enable us to deliver work efficiently.", "Internal"),
-    ("Q22", "Collaboration", "Processes involving external parties work smoothly.", "External"),
-    ("Q23", "Collaboration", "The systems we use support our work effectively and reliably.", "Systems"),
-    ("Q24", "Collaboration", "We have the right tools to perform our roles at a high standard.", "Tools"),
-    ("Q25", "Collaboration", "Our equipment and infrastructure meet the needs of our work.", "Equipment"),
-    ("Q26", "Collaboration", "Our ways of working are well-defined, understood, and consistently applied.", "Ways of working"),
-    ("Q27", "Collaboration", "Decisions in our team are made in a timely, transparent, and effective manner.", "Decisions"),
-    ("Q28", "Collaboration", "Governance mechanisms clearly define roles, responsibilities, and accountabilities.", "Governance"),
-    ("Q29", "Collaboration", "When processes are not working, we have effective ways to identify and improve them.", "Improvement"),
-    ("Q30", "Collaboration", "Policies and controls in our team are practical and add value.", "Policy"),
+    ("Q21", "Coordination", "Our internal processes and workflows enable us to deliver work efficiently.", "Internal"),
+    ("Q22", "Coordination", "Processes involving external parties work smoothly.", "External"),
+    ("Q23", "Coordination", "The systems we use support our work effectively and reliably.", "Systems"),
+    ("Q24", "Coordination", "We have the right tools to perform our roles at a high standard.", "Tools"),
+    ("Q25", "Coordination", "Our equipment and infrastructure meet the needs of our work.", "Equipment"),
+    ("Q26", "Coordination", "Our ways of working are well-defined, understood, and consistently applied.", "Ways of working"),
+    ("Q27", "Coordination", "Decisions in our team are made in a timely, transparent, and effective manner.", "Decisions"),
+    ("Q28", "Coordination", "Governance mechanisms clearly define roles, responsibilities, and accountabilities.", "Governance"),
+    ("Q29", "Coordination", "When processes are not working, we have effective ways to identify and improve them.", "Improvement"),
+    ("Q30", "Coordination", "Policies and controls in our team are practical and add value.", "Policy"),
     ("Q31", "Excellence", "Our team invests meaningfully in learning and development opportunities.", "L&D"),
     ("Q32", "Excellence", "The training available equips me with the skills I need to perform at a high level.", "Training"),
-    ("Q33", "Excellence", "A growth mindset is actively encouraged and modeled in our team.", "Growth"),
+    ("Q33", "Excellence", "A growth mindset is actively encouraged and modelled in our team.", "Growth"),
     ("Q34", "Excellence", "We continuously look for ways to improve how we work.", "Continuous"),
     ("Q35", "Excellence", "Our team actively builds the new capabilities needed to meet future business needs.", "Capability"),
     ("Q36", "Excellence", "Innovation and new ideas are encouraged, tested, and adopted where appropriate.", "Innovation"),
     ("Q37", "Excellence", "Feedback is given and received openly, constructively, and regularly.", "Feedback"),
     ("Q38", "Excellence", "Underperformance is addressed fairly and consistently to raise overall standards.", "Perf mgmt"),
-    ("Q39", "Excellence", "We celebrate achievements and recognize high performance in meaningful ways.", "Recognition"),
+    ("Q39", "Excellence", "We celebrate achievements and recognise high performance in meaningful ways.", "Recognition"),
     ("Q40", "Excellence", "Our team is committed to continuously raising performance standards.", "Standards"),
 ]
 
@@ -108,9 +109,9 @@ DEPARTMENTS = [
 def _code(name): return name.split(" - ")[0].strip()
 
 CONFIG_SETTINGS = [
-    ("tool_version", "3.3", "Tool version.", "Read-only"),
+    ("tool_version", "3.4", "Tool version.", "Read-only"),
     ("schema_version", "HPC-CONFIG-v2", "Schema.", "Read-only"),
-    ("framework", "PACE", "Purpose · Alliance · Collaboration · Excellence.", "Read-only"),
+    ("framework", "PACE", "Purpose · Alliance · Coordination · Excellence.", "Read-only"),
     ("last_updated_date", date.today().isoformat(), "Auto-stamped.", "Read-only"),
     ("last_updated_by", "Cathay Academy", "Owner.", "Editable"),
     ("scale_min", 1, "Min rating.", "Editable"),
@@ -134,7 +135,7 @@ def build_config():
     ws0["A1"] = "High Performance Diagnostic Tool — Master Configuration (PACE)"
     ws0["A1"].font = Font(name="Arial", size=16, bold=True, color="FFFFFF")
     ws0["A1"].fill = PatternFill("solid", start_color=NAVY); ws0.merge_cells("A1:F1")
-    ws0["A2"] = "Powered by Cathay Academy. Elements: Purpose · Alliance · Collaboration · Excellence."
+    ws0["A2"] = "Powered by Cathay Academy. Elements: Purpose · Alliance · Coordination · Excellence."
     ws0["A2"].font = Font(name="Arial", size=11, italic=True, color="595959"); ws0.merge_cells("A2:F2")
     ws = wb.create_sheet("Question Bank")
     for j, h in enumerate(["Question ID", "Pillar", "Question Text", "Active / Inactive", "Display Order", "Sub-driver", "Optional Notes"], start=1):
@@ -145,7 +146,7 @@ def build_config():
         ws.cell(row=i, column=5, value=i - 1); ws.cell(row=i, column=6, value=note)
         for j in range(1, 8): _data(ws.cell(row=i, column=j))
     dv = DataValidation(type="list", formula1='"Active,Inactive"', allow_blank=False); dv.add(f"D2:D{len(QUESTIONS)+1}"); ws.add_data_validation(dv)
-    dv2 = DataValidation(type="list", formula1='"Purpose,Alliance,Collaboration,Excellence"', allow_blank=False); dv2.add(f"B2:B{len(QUESTIONS)+1}"); ws.add_data_validation(dv2)
+    dv2 = DataValidation(type="list", formula1='"Purpose,Alliance,Coordination,Excellence"', allow_blank=False); dv2.add(f"B2:B{len(QUESTIONS)+1}"); ws.add_data_validation(dv2)
     for col, w in {"A": 14, "B": 16, "C": 66, "D": 18, "E": 14, "F": 24, "G": 30}.items(): ws.column_dimensions[col].width = w
     ws.freeze_panes = "A2"
     wsd = wb.create_sheet("Departments")
@@ -168,11 +169,12 @@ def build_config():
     wscl = wb.create_sheet("Change Log")
     for j, h in enumerate(["Date", "Changed By", "Change Type", "Item Affected", "Summary of Change", "Reason / Approval"], start=1): _header(wscl.cell(row=1, column=j), h)
     wscl.cell(row=2, column=1, value=date.today().isoformat()); wscl.cell(row=2, column=2, value="Cathay Academy")
-    wscl.cell(row=2, column=3, value="Initial"); wscl.cell(row=2, column=4, value="All"); wscl.cell(row=2, column=5, value="Baseline v3.3 — 34 depts, broad spectrum")
+    wscl.cell(row=2, column=3, value="Update"); wscl.cell(row=2, column=4, value="Framework + spelling")
+    wscl.cell(row=2, column=5, value="v3.4 — element renamed Collaboration -> Coordination; British English spelling")
     for j in range(1, 7): _data(wscl.cell(row=2, column=j))
     wss = wb.create_sheet("_SCHEMA"); wss["A2"] = "schema_name"; wss["B2"] = "HPC-CONFIG-v2"; wss.sheet_state = "hidden"
     wb.save("/home/claude/hpc_tool/data/HPC_Question_Bank_Template.xlsx")
-    print("Config saved (34 departments).")
+    print("Config saved (34 departments, Coordination element, British English).")
 
 
 PILLAR_QS = {}
@@ -207,12 +209,12 @@ def _profile(name):
     return tier, {
         "Purpose": max(1.5, min(9.5, base + rr.uniform(-spread, spread + 0.4))),
         "Alliance": max(1.5, min(9.5, base + rr.uniform(-spread - 0.3, spread))),
-        "Collaboration": max(1.3, min(9.3, base + rr.uniform(-spread - 0.5, spread - 0.2))),
+        "Coordination": max(1.3, min(9.3, base + rr.uniform(-spread - 0.5, spread - 0.2))),
         "Excellence": max(1.8, min(9.5, base + rr.uniform(-spread, spread + 0.4))),
     }
 
 
-POLARISED_ELEMENTS = {"IMT - Information Technology": {"Collaboration", "Alliance"},
+POLARISED_ELEMENTS = {"IMT - Information Technology": {"Coordination", "Alliance"},
                       "ENG - Engineering": {"Alliance"}}
 
 
@@ -246,7 +248,7 @@ def build_responses(per_dept=14):
                 row += 1
     for col, w in {"A": 18, "B": 20, "C": 40, "D": 14, "E": 12, "F": 60, "G": 16, "H": 8}.items(): ws.column_dimensions[col].width = w
     wb.save("/home/claude/hpc_tool/data/HPC_Response_Data_Template.xlsx")
-    print(f"Responses saved ({row - 1} rows across {len(DEPARTMENTS)} depts, broad spectrum).")
+    print(f"Responses saved ({row - 1} rows across {len(DEPARTMENTS)} depts).")
 
 
 def build_dept_lookup():

@@ -9,7 +9,8 @@ from openpyxl import load_workbook
 
 REQUIRED_SHEETS = ["Question Bank", "Departments", "Config"]
 SCHEMA_TAG = "HPC-CONFIG-v2"
-PILLARS = ["Purpose", "Alliance", "Collaboration", "Excellence"]
+# PACE = Purpose · Alliance · Coordination · Excellence
+PILLARS = ["Purpose", "Alliance", "Coordination", "Excellence"]
 BRAND = "High Performance Diagnostic Tool - Powered by Cathay Academy"
 
 
@@ -80,6 +81,8 @@ def load_config(path: str | Path) -> HPCConfig:
     questions = questions.dropna(subset=["Question ID", "Question Text"]).copy()
     questions["Question ID"] = questions["Question ID"].astype(str).str.strip()
     questions["Pillar"] = questions["Pillar"].astype(str).str.strip()
+    # Legacy support: treat any 'Collaboration' pillar as 'Coordination'
+    questions["Pillar"] = questions["Pillar"].replace({"Collaboration": "Coordination"})
     questions["Active / Inactive"] = questions["Active / Inactive"].fillna("Active").astype(str).str.strip()
     questions["Display Order"] = pd.to_numeric(questions["Display Order"], errors="coerce").fillna(9999)
 
